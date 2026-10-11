@@ -17,7 +17,7 @@ function redirectTo(req: NextRequest, path: string) {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/signup") {
     if (session) return redirectTo(req, "/dashboard");
     return NextResponse.next();
   }

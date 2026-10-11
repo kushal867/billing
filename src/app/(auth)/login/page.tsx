@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LoginForm } from "./login-form";
+import { signupEnabled } from "@/lib/services/signup";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -14,6 +16,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-muted-foreground">Your Bills. Your Balance. Automatically.</p>
         </div>
         <LoginForm next={next} />
+        {signupEnabled() && (
+          <p className="text-center text-sm text-muted-foreground">New here? <Link href="/signup" className="font-medium text-primary hover:underline">Create an account</Link></p>
+        )}
       </div>
     </main>
   );

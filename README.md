@@ -41,6 +41,7 @@ Sign in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, then:
 | `DATABASE_URL` | PostgreSQL connection string (use the pooled URL on serverless hosts). |
 | `DIRECT_URL` | Non-pooled URL used by `prisma migrate`. Same as `DATABASE_URL` if you have no pooler. |
 | `SESSION_SECRET` | ≥ 32 random characters used to sign session cookies: `openssl rand -base64 48`. The app refuses to run without it. |
+| `ALLOW_SIGNUP` | `true` (default) shows a public **Create account** page; `false` hides it. |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | Only read by `npm run db:seed`. No default credentials exist in the code. |
 
 Secrets are read on the server only; nothing is exposed to the browser. `.env` is git-ignored.
@@ -201,7 +202,7 @@ Before releasing: `npm run lint && npm run typecheck && npm test && npm run buil
 
 ## Known limitations
 
-- **One business per installation.** (The schema is multi-tenant and every query is tenant-scoped, so extending this is straightforward.)
+- **Self-service sign-up creates a separate business per account.** Data is isolated per business (tested), but there is **no email verification or password-reset email yet**; sign-up is rate limited to 5 per hour per IP. Set `ALLOW_SIGNUP=false` to turn the public sign-up page off.
 - **PDF export uses built-in Latin fonts**; Devanagari (Nepali script) text in business names or descriptions is shown as `?` in PDFs. Screen, Excel and CSV are unaffected. Embed a Unicode font in `src/lib/exporters/pdf.ts` if you need it.
 - **BS conversion covers 2000–2090.** Dates outside this range are rejected for BS entry (AD entry always works).
 - **PDFs are stored for reference, not OCR’d** (by design, see Imports).
