@@ -8,7 +8,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       ref={ref}
       aria-invalid={invalid || undefined}
       className={cn(
-        "flex h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-base placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-11 w-full min-w-0 rounded-md border border-input bg-white px-3 py-2 text-base placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         invalid && "border-expense focus-visible:ring-expense",
         className,
       )}

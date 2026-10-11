@@ -24,7 +24,7 @@ export default async function ReportsIndex() {
   return (
     <>
       <PageHeader title={t("Reports")} description={t("Every report is calculated from your saved entries. Each can be printed or downloaded as PDF, Excel or CSV.")} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {REPORTS.map(({ href, title, icon: Icon, text }) => (
           <Link key={href} href={href} className="group">
             <Card className="h-full p-5 transition-colors group-hover:border-primary">

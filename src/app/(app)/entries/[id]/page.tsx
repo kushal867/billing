@@ -53,7 +53,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       />
       {t.status === "VOID" && <Alert tone="error" className="mb-4" title={tr("This entry was deleted")}>{tr("Reason (kept in the history)")}: {t.voidReason}. {tr("It no longer affects any balance or report, but is kept in the history below.")}</Alert>}
       {t.reversalOfId && <Alert tone="info" className="mb-4">{tr("This is a reversal. It offsets an earlier entry and cannot be edited.")}</Alert>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <CardContent className="p-5">
             {editable ? (
@@ -69,7 +69,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
                 }}
               />
             ) : (
-              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-muted-foreground">{tr("Date")}</dt><dd className="font-medium">{formatDate(toIso(t.transactionDate), cal)} {cal}</dd></div>
                 <div><dt className="text-muted-foreground">{tr("Bill Number")}</dt><dd className="font-medium">{t.billNumber}</dd></div>
                 <div><dt className="text-muted-foreground">{tr("Debit")}</dt><dd><Amt v={t.debitAmount.toFixed(2)} grouping={g} blankZero /></dd></div>

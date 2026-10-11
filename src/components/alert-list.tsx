@@ -25,6 +25,15 @@ const DETAILS: Record<AlertItem["kind"], string> = {
   uncategorised: "{n} entries have no category, so Profit & Loss leaves them out.",
 };
 
+const DETAILS_ONE: Partial<Record<AlertItem["kind"], string>> = {
+  "missing-bills": "1 bill number looks skipped: {ranges}. If a bill was skipped on purpose or the series restarted, you can dismiss this.",
+  large: "1 recent entry is much larger than your usual amounts.",
+  "duplicate-bills": "1 bill number is used more than once.",
+  drafts: "1 draft is saved but not counted in balances yet.",
+  future: "1 entry is dated in the future.",
+  uncategorised: "1 entry has no category, so Profit & Loss leaves it out.",
+};
+
 /** Reminders with a per-device "dismiss". A dismissed reminder returns only if its content changes. */
 export function AlertList({ alerts, compact }: { alerts: AlertItem[]; compact?: boolean }) {
   const t = useT();
@@ -45,7 +54,7 @@ export function AlertList({ alerts, compact }: { alerts: AlertItem[]; compact?: 
             <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", a.severity === "warn" ? "text-warn" : "text-primary")} aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="font-medium text-navy">{t(TITLES[a.kind])}</p>
-              <p className="text-sm">{t(DETAILS[a.kind], a.params)}</p>
+              <p className="text-sm">{t(a.count === 1 && DETAILS_ONE[a.kind] ? DETAILS_ONE[a.kind]! : DETAILS[a.kind], a.params)}</p>
               {!compact && a.items.length > 0 && <ul className="mt-1 flex flex-wrap gap-1.5 text-xs">{a.items.map((i) => <li key={i} className="rounded bg-white px-2 py-0.5 num ring-1 ring-border">{i}</li>)}</ul>}
             </div>
             <div className="flex gap-2">

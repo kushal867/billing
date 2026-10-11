@@ -42,7 +42,7 @@ const fd = (e: React.FormEvent<HTMLFormElement>) => {
 export function ProfileForm({ biz, readOnly }: { biz: Record<"name" | "address" | "phone" | "email" | "panNumber" | "currency" | "currencySymbol" | "reportHeader" | "reportFooter", string>; readOnly: boolean }) {
   const { pending, errors, formError, submit } = useSubmit();
   return (
-    <form onSubmit={(e) => { const v = fd(e); submit(() => saveProfile(v), "Business details saved"); }} className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={(e) => { const v = fd(e); submit(() => saveProfile(v), "Business details saved"); }} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {formError && <Alert tone="error" className="sm:col-span-2">{formError}</Alert>}
       <Field label="Business name" htmlFor="name" error={errors.name}><Input id="name" name="name" defaultValue={biz.name} disabled={readOnly} required /></Field>
       <Field label="PAN / VAT number" htmlFor="panNumber"><Input id="panNumber" name="panNumber" defaultValue={biz.panNumber} disabled={readOnly} /></Field>
@@ -65,7 +65,7 @@ export function PreferencesForm({ biz, readOnly }: { biz: { displayCalendar: Cal
   const { pending, errors, formError, submit } = useSubmit();
   const [fyCal, setFyCal] = useState<Calendar>(biz.fyCalendar);
   return (
-    <form onSubmit={(e) => { const v = fd(e); submit(() => savePreferences(v), "Preferences saved"); }} className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={(e) => { const v = fd(e); submit(() => savePreferences(v), "Preferences saved"); }} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {formError && <Alert tone="error" className="sm:col-span-2">{formError}</Alert>}
       <Field label="Show dates in" htmlFor="displayCalendar" hint="Dates you type are always kept exactly as entered">
         <Select id="displayCalendar" name="displayCalendar" defaultValue={biz.displayCalendar} disabled={readOnly}><option value="BS">Bikram Sambat (BS)</option><option value="AD">Gregorian (AD)</option></Select>
@@ -159,7 +159,7 @@ export function OpeningBalanceForm({ years, calendar, readOnly }: { years: FyRow
         if (!d.ok) return toast.error(d.error);
         submit(() => saveOpening({ financialYearId: fyId, amount, effectiveDate: d.iso, notes }), "Opening balance saved");
       }}
-      className="grid gap-4 sm:grid-cols-2"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
     >
       {formError && <Alert tone="error" className="sm:col-span-2">{formError}</Alert>}
       <Field label="Financial year" htmlFor="ob-fy"><Select id="ob-fy" value={fyId} onChange={(e) => pick(e.target.value)} disabled={readOnly}>{years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.opening ? " (set)" : ""}</option>)}</Select></Field>
@@ -207,7 +207,7 @@ export function PasswordForm({ name }: { name: string }) {
         <Field label="Your name" htmlFor="my-name" error={nameState.errors.name}><Input id="my-name" name="name" defaultValue={name} className="w-64" /></Field>
         <Button type="submit" variant="outline" loading={nameState.pending}>Save name</Button>
       </form>
-      <form onSubmit={(e) => { const f = e.currentTarget; const v = fd(e); submit(() => savePassword({ current: v.current, next: v.next, confirm: v.confirm }), "Password changed. Other devices were signed out.", () => f.reset()); }} className="grid gap-4 sm:grid-cols-3">
+      <form onSubmit={(e) => { const f = e.currentTarget; const v = fd(e); submit(() => savePassword({ current: v.current, next: v.next, confirm: v.confirm }), "Password changed. Other devices were signed out.", () => f.reset()); }} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {formError && <Alert tone="error" className="sm:col-span-3">{formError}</Alert>}
         <Field label="Current password" htmlFor="pw-cur" error={errors.current}><Input id="pw-cur" name="current" type="password" autoComplete="current-password" required /></Field>
         <Field label="New password" htmlFor="pw-new" error={errors.password} hint="At least 8 characters with letters and numbers"><Input id="pw-new" name="next" type="password" autoComplete="new-password" required /></Field>
@@ -257,7 +257,7 @@ export function UserManager({ users, meId }: { users: UserRow[]; meId: string })
           </tbody>
         </table>
       </div>
-      <form onSubmit={(e) => { const f = e.currentTarget; const v = fd(e); submit(() => addUser(v), "User added", () => f.reset()); }} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <form onSubmit={(e) => { const f = e.currentTarget; const v = fd(e); submit(() => addUser(v), "User added", () => f.reset()); }} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {formError && <Alert tone="error" className="sm:col-span-2 lg:col-span-4">{formError}</Alert>}
         <Field label="Name" htmlFor="u-name" error={errors.name}><Input id="u-name" name="name" required /></Field>
         <Field label="Email" htmlFor="u-email" error={errors.email}><Input id="u-email" name="email" type="email" required /></Field>

@@ -57,7 +57,7 @@ export function DateRangeSelector({
           {current.key === "all" ? t("All dates") : `${formatDate(current.from, calendar)} to ${formatDate(current.to, calendar)} ${calendar}`}
         </span>
       </div>
-      <form onSubmit={apply} className="grid items-start gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <form onSubmit={apply} className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <Field label={t("From")}><DateInput value={from} calendar={cal} onChange={setFrom} onCalendarChange={setCal} /></Field>
         <Field label={t("To")}><DateInput value={to} calendar={cal} onChange={setTo} hideCalendarSwitch /></Field>
         <div className="sm:pt-[26px]"><Button type="submit" variant="outline" className="w-full">{t("Apply")}</Button></div>

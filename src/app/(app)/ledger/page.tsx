@@ -99,7 +99,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
         </form>
 
         {status === "POSTED" && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard label={t("Opening Balance")} value={summary.opening.toFixed(2)} grouping={g} />
             <SummaryCard label={t("Total Debit")} value={summary.debit.toFixed(2)} grouping={g} />
             <SummaryCard label={t("Total Credit")} value={summary.credit.toFixed(2)} grouping={g} />

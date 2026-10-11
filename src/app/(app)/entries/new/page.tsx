@@ -45,7 +45,7 @@ export default async function NewEntryPage() {
         </Alert>
       )}
       {fy === 0 && <Alert tone="warning" className="mb-4">{t("No financial year has been created yet.")} <Link className="underline" href="/settings#financial-years">{t("Add one in Settings")}</Link>.</Alert>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <CardContent className="p-5">
             <EntryForm mode="create" calendar={cal} grouping={g} symbol={biz.currencySymbol} categories={categories} nextBill={nextBill} />

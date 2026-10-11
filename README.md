@@ -14,6 +14,10 @@ KusBill replaces a paper billpad with a simple, secure, database-backed web app.
 
 ---
 
+**📖 Using the app? Read the [User Guide](docs/USER_GUIDE.md)** (also as a [PDF](docs/KusBill-User-Guide.pdf)), a step-by-step guide with screenshots, in English with a short Nepali section.
+
+---
+
 ## Quick start (local)
 
 Requirements: Node.js 20+ and a PostgreSQL 14+ database.

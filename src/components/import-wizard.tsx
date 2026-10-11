@@ -112,7 +112,7 @@ export function ImportWizard({ defaultCalendar, grouping }: { defaultCalendar: C
 
       <section aria-labelledby="map-h" className="space-y-3 rounded-lg border p-4">
         <h3 id="map-h" className="font-semibold">1. Match your columns</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FIELDS.map((f) => (
             <Field key={f.key} label={`${f.label}${f.required ? " *" : ""}`} htmlFor={`map-${f.key}`}>
               <Select id={`map-${f.key}`} value={mapping![f.key]} onChange={(e) => { setMapping({ ...mapping!, [f.key]: Number(e.target.value) }); setResults(null); }}>

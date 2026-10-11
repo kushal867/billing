@@ -261,6 +261,8 @@ Each month's **closing balance becomes the next month's opening balance**. The b
 
 ![Annual report](images/13-report-annual.png)
 
+![Reconciliation summary at the bottom of the annual report](images/13b-report-annual-reconciliation.png)
+
 The **Reconciliation summary** at the bottom proves the report adds up: opening + debit − credit = closing, and the ledger rows agree with the monthly totals. If an opening balance you recorded for the year differs from the balance carried forward, a yellow note tells you by how much.
 
 ### Profit & Loss
@@ -407,6 +409,7 @@ KusBill works in a phone's browser. The menu is behind the **☰** button, and e
 <tr>
 <td><img src="images/29-mobile-add-entry.png" alt="Add entry on a phone" width="260"></td>
 <td><img src="images/30-mobile-menu.png" alt="Menu on a phone" width="260"></td>
+<td><img src="images/31-mobile-ledger.png" alt="Ledger on a phone" width="260"></td>
 </tr>
 </table>
 

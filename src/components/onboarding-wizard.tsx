@@ -121,7 +121,7 @@ export function OnboardingWizard({ initial }: Props) {
         <form onSubmit={(e) => { e.preventDefault(); saveFirst(); }} className="space-y-4">
           <h2 className="text-lg font-semibold text-navy">{t("Your first entry")}</h2>
           <p className="text-sm text-muted-foreground">{t("Type one bill from your billpad to see how it works. You can change or delete it later.")}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t("Date")} htmlFor="wz-date"><DateInput id="wz-date" value={entry.date} calendar={cal} onChange={(v) => setEntry({ ...entry, date: v })} onCalendarChange={setCal} /></Field>
             <Field label={t("Bill Number")} htmlFor="wz-bill"><Input id="wz-bill" className="num text-lg" value={entry.bill} onChange={(e) => setEntry({ ...entry, bill: e.target.value })} /></Field>
             <Field label={t("Debit")} htmlFor="wz-debit"><CurrencyInput id="wz-debit" value={entry.debit} onValueChange={(v) => setEntry({ ...entry, debit: v })} /></Field>

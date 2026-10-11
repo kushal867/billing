@@ -46,7 +46,7 @@ export function AccountActiveToggle({ id, isActive }: { id: string; isActive: bo
 export function AddAccountForm() {
   const { pending, error, go } = useAct();
   return (
-    <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = Object.fromEntries(new FormData(f)); go(() => addAccount(v), "Account added", () => f.reset()); }} className="grid gap-3 sm:grid-cols-[8rem_1fr_10rem_auto] sm:items-end">
+    <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = Object.fromEntries(new FormData(f)); go(() => addAccount(v), "Account added", () => f.reset()); }} className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_10rem_auto] sm:items-end">
       <Field label="Code" htmlFor="ac-code"><Input id="ac-code" name="code" required /></Field>
       <Field label="Account name" htmlFor="ac-name"><Input id="ac-name" name="name" required /></Field>
       <Field label="Type" htmlFor="ac-type"><Select id="ac-type" name="type" defaultValue="EXPENSE"><option value="ASSET">Asset</option><option value="LIABILITY">Liability</option><option value="EQUITY">Equity</option><option value="INCOME">Income</option><option value="EXPENSE">Expense</option></Select></Field>
@@ -60,7 +60,7 @@ export function AddCategoryForm({ accounts }: { accounts: AcctOpt[] }) {
   const { pending, error, go } = useAct();
   const [kind, setKind] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   return (
-    <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = Object.fromEntries(new FormData(f)); go(() => addCategory({ ...v, kind }), "Category added", () => f.reset()); }} className="grid gap-3 sm:grid-cols-[1fr_9rem_1fr_auto] sm:items-end">
+    <form onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const v = Object.fromEntries(new FormData(f)); go(() => addCategory({ ...v, kind }), "Category added", () => f.reset()); }} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_9rem_1fr_auto] sm:items-end">
       <Field label="Category name" htmlFor="cat-name"><Input id="cat-name" name="name" required /></Field>
       <Field label="Counts as" htmlFor="cat-kind"><Select id="cat-kind" value={kind} onChange={(e) => setKind(e.target.value as "INCOME" | "EXPENSE")}><option value="INCOME">Income</option><option value="EXPENSE">Expense</option></Select></Field>
       <Field label="Account" htmlFor="cat-acct"><Select id="cat-acct" name="accountId" key={kind} required>{accounts.filter((a) => a.type === kind && a.isActive).map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}</Select></Field>
@@ -100,7 +100,7 @@ export function JournalForm({ accounts, calendar, grouping }: { accounts: AcctOp
       className="space-y-4"
     >
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Date" htmlFor="j-date"><DateInput id="j-date" value={date} calendar={cal} onChange={setDate} onCalendarChange={setCal} /></Field>
         <Field label="Description" htmlFor="j-memo"><Input id="j-memo" value={memo} onChange={(e) => setMemo(e.target.value)} required /></Field>
         <Field label="Reference (optional)" htmlFor="j-ref"><Input id="j-ref" value={ref} onChange={(e) => setRef(e.target.value)} /></Field>

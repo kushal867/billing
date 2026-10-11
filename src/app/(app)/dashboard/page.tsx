@@ -54,7 +54,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <AlertList alerts={alerts} compact />
         <DateRangeSelector basePath="/dashboard" current={range} calendar={cal} />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard label={t("Opening Balance")} value={d.opening.toFixed(2)} grouping={g} note={t("Carried forward to the start of this period")} />
           <SummaryCard label={t("Total Debit")} value={d.debit.toFixed(2)} grouping={g} />
           <SummaryCard label={t("Total Credit")} value={d.credit.toFixed(2)} grouping={g} />

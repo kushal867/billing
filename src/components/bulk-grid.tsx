@@ -141,7 +141,7 @@ export function BulkGrid({ calendar, nextBill }: { calendar: Calendar; nextBill:
   return (
     <div className="space-y-4">
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="grid gap-4 rounded-lg border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
+      <div className="grid grid-cols-1 gap-4 rounded-lg border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
         <Field label={t("Date for rows without their own date")} htmlFor="bulk-date">
           <DateInput id="bulk-date" value={pageDate} calendar={cal} onChange={(v) => { setPageDate(v); setResults({}); }} onCalendarChange={setCal} />
         </Field>
@@ -166,7 +166,7 @@ export function BulkGrid({ calendar, nextBill }: { calendar: Calendar; nextBill:
                     <td key={col} className="p-1">
                       <Input
                         data-cell={`${i}-${c}`} aria-label={`${t("Row")} ${i + 1} ${t(col === "date" ? "Date" : col === "bill" ? "Bill No." : col === "debit" ? "Debit" : col === "credit" ? "Credit" : "Description")}`}
-                        className={cn("h-9", (col === "debit" || col === "credit") && "num text-right", col !== "description" && "num")} inputMode={col === "debit" || col === "credit" ? "decimal" : undefined}
+                        className={cn("h-9", col === "date" && "min-w-[8.5rem]", (col === "debit" || col === "credit") && "num text-right", col !== "description" && "num")} inputMode={col === "debit" || col === "credit" ? "decimal" : undefined}
                         placeholder={col === "date" ? pageDate : undefined} value={r[col]} disabled={pending}
                         onChange={(e) => setCell(i, col, col === "debit" || col === "credit" ? e.target.value.replace(/[^\d.,]/g, "") : e.target.value)}
                         onKeyDown={(e) => onKey(e, i, c)} onPaste={(e) => onPaste(e, i, c)} onFocus={(e) => e.currentTarget.select()}

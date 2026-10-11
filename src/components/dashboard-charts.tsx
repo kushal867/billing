@@ -28,7 +28,7 @@ export function DashboardCharts({ data, grouping, hasClassified }: { data: Row[]
   const common = { margin: { top: 8, right: 8, left: 0, bottom: 0 } };
   const axis = { tick: { fontSize: 11, fill: "#64748b" }, tickLine: false, axisLine: { stroke: "#cbd5e1" } } as const;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="lg:col-span-2">
         <ChartCard title={t("Monthly balance trend")} description={t("Closing balance at the end of each month")} empty={!data.length}>
           <ResponsiveContainer>

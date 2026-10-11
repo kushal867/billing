@@ -1,5 +1,11 @@
 /** Nepali translations. Key = the exact English source text used in the UI. */
 export const ne: Record<string, string> = {
+  "1 entry has no category, so Profit & Loss leaves it out.": "१ प्रविष्टिको वर्ग छैन, त्यसैले नाफा/नोक्सानमा समावेश छैन।",
+  "1 entry is dated in the future.": "१ प्रविष्टिको मिति भविष्यको छ।",
+  "1 draft is saved but not counted in balances yet.": "१ मस्यौदा सुरक्षित छ तर अहिले मौज्दातमा गणना भएको छैन।",
+  "1 bill number is used more than once.": "१ बिल नम्बर एकभन्दा बढी पटक प्रयोग भएको छ।",
+  "1 recent entry is much larger than your usual amounts.": "हालैको १ प्रविष्टि तपाईंको सामान्य रकमभन्दा निकै ठूलो छ।",
+  "1 bill number looks skipped: {ranges}. If a bill was skipped on purpose or the series restarted, you can dismiss this.": "१ बिल नम्बर छुटेजस्तो देखिन्छ: {ranges}। जानाजानी छोडिएको वा नम्बर फेरि सुरु भएको हो भने यो हटाउन सकिन्छ।",
   "Could not reach the server": "सर्भरसँग सम्पर्क हुन सकेन",
   "This device has no room left.": "यो उपकरणमा ठाउँ सकियो।",
   "{n} entries have no category, so Profit & Loss leaves them out.": "{n} प्रविष्टिको वर्ग छैन, त्यसैले नाफा/नोक्सानमा समावेश छैनन्।",
