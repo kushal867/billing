@@ -6,6 +6,7 @@ import { resolveRange, type RangeKey } from "@/lib/ranges";
 import { toIso } from "@/lib/dates";
 import type { LedgerFilters } from "./ledger";
 import { ensureCurrentFinancialYear, getBusiness } from "./periods";
+import { resolveLedgerPeriod } from "./ledger-period";
 import { buildAnnualReport, buildDailyReport, buildLedgerReport, buildMonthlyReport, buildProfitLoss, buildTrialBalance } from "./reports";
 import type { ReportDoc } from "./report-doc";
 
@@ -22,10 +23,11 @@ export async function buildReport(ctx: Ctx, slug: ReportSlug, sp: ReportParams):
   const withDefault = (key: RangeKey) => resolveRange({ ...sp, range: sp.range ?? (sp.from && sp.to ? "custom" : key) }, cfg);
   switch (slug) {
     case "ledger": {
-      const r = withDefault("all");
+      const period = await resolveLedgerPeriod(ctx.businessId, biz, sp);
+      const r = { key: period.key, from: period.from, to: period.to };
       const f: LedgerFilters = {
-        from: r.key === "all" ? undefined : r.from,
-        to: r.key === "all" ? undefined : r.to,
+        from: period.all ? undefined : period.from,
+        to: period.all ? undefined : period.to,
         q: sp.q,
         type: sp.type === "debit" || sp.type === "credit" ? sp.type : "all",
         categoryId: sp.category || undefined,

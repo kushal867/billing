@@ -143,6 +143,13 @@ export function OpeningBalanceForm({ years, calendar, readOnly }: { years: FyRow
     setNotes(y?.opening?.notes ?? "");
   };
 
+  // Which year currently starts the ledger (earliest effective date among recorded opening balances)?
+  const withOb = years.filter((y) => y.opening).sort((a, b) => a.opening!.effectiveDate.localeCompare(b.opening!.effectiveDate));
+  const anchorYear = withOb[0];
+  const typed = parseEnteredDate(date, cal);
+  const startsEarlier = !!anchorYear && anchorYear.id !== fyId && typed.ok && typed.iso < anchorYear.opening!.effectiveDate;
+  const carriedForward = !!anchorYear && anchorYear.id !== fyId && !startsEarlier;
+
   if (!years.length) return <Alert tone="info">Add a financial year first (below), then set its opening balance here.</Alert>;
   return (
     <form
@@ -163,6 +170,16 @@ export function OpeningBalanceForm({ years, calendar, readOnly }: { years: FyRow
         <DateInput id="ob-date" value={date} calendar={cal} onChange={setDate} onCalendarChange={setCal} />
       </Field>
       <Field label="Notes (optional)" htmlFor="ob-notes"><Textarea id="ob-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={readOnly} /></Field>
+      {startsEarlier && (
+        <Alert tone="warning" className="sm:col-span-2" title="This will become the starting balance of the whole ledger">
+          It is earlier than the opening balance recorded for {anchorYear!.label}. From now on this figure starts the ledger and {anchorYear!.label}&apos;s recorded balance is used only to show a difference on its Annual Report. Balances will change.
+        </Alert>
+      )}
+      {carriedForward && (
+        <Alert tone="info" className="sm:col-span-2">
+          The ledger already starts from {anchorYear!.label}&apos;s opening balance, so this year&apos;s balance is carried forward automatically. A figure saved here is only compared against it on the Annual Report.
+        </Alert>
+      )}
       <p className="text-xs text-muted-foreground sm:col-span-2">The earliest opening balance starts the ledger. For later years the balance is always carried forward from the previous year; a different figure recorded here is only shown as a difference on the Annual Report.</p>
       {!readOnly && <div className="sm:col-span-2"><Button type="submit" loading={pending}>Save opening balance</Button></div>}
     </form>

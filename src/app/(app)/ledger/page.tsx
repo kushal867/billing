@@ -6,7 +6,7 @@ import { canWrite } from "@/lib/auth/context";
 import { db } from "@/lib/db";
 import { getBusiness } from "@/lib/services/periods";
 import { listLedger, summarizePeriod, type LedgerSortField } from "@/lib/services/ledger";
-import { resolveRange } from "@/lib/ranges";
+import { monthsBetween, resolveLedgerPeriod } from "@/lib/services/ledger-period";
 import { formatDate } from "@/lib/dates";
 import { conventionText } from "@/lib/services/reports";
 import { Amt } from "@/components/amount";
@@ -38,21 +38,25 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   const biz = await getBusiness(ctx.businessId);
   const cal = biz.displayCalendar;
   const g = biz.numberGrouping;
-  const range = resolveRange({ ...sp, range: sp.range ?? (sp.from ? "custom" : "all") }, { ...biz, displayCalendar: cal });
+  const range = await resolveLedgerPeriod(ctx.businessId, biz, sp);
   const sort = (SORTABLE.some((s) => s.key === sp.sort) ? sp.sort : biz.defaultSortField) as LedgerSortField;
   const dir = sp.dir === "desc" || sp.dir === "asc" ? sp.dir : (biz.defaultSortDir as "asc" | "desc");
   const status = sp.status === "DRAFT" || sp.status === "VOID" ? sp.status : "POSTED";
   const type = sp.type === "debit" || sp.type === "credit" ? sp.type : "all";
   const page = Math.max(1, Number(sp.page) || 1);
-  const filters = { from: range.key === "all" ? undefined : range.from, to: range.key === "all" ? undefined : range.to, q: sp.q, type, categoryId: sp.category || undefined, status } as const;
+  const filters = { from: range.all ? undefined : range.from, to: range.all ? undefined : range.to, q: sp.q, type, categoryId: sp.category || undefined, status } as const;
 
-  const [data, summary, categories] = await Promise.all([
+  const [data, summary, categories, years] = await Promise.all([
     listLedger(ctx, { ...filters, sort, dir, page, pageSize: 50 }),
     summarizePeriod(ctx, range.from, range.to),
     db.category.findMany({ where: { businessId: ctx.businessId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.financialYear.findMany({ where: { businessId: ctx.businessId }, orderBy: { startDate: "desc" } }),
   ]);
+  const selectedYear = years.find((y) => y.id === sp.fy);
+  const monthOptions = selectedYear ? monthsBetween(selectedYear.startDate.toISOString().slice(0, 10), selectedYear.endDate.toISOString().slice(0, 10), cal) : [];
   const write = canWrite(ctx.role);
-  const keep: SP = { range: range.key === "all" ? "all" : range.key, from: range.key === "custom" ? range.from : undefined, to: range.key === "custom" ? range.to : undefined, q: sp.q, type: type === "all" ? undefined : type, status: status === "POSTED" ? undefined : status, category: sp.category };
+  const usingPicker = !!(sp.fy || sp.month);
+  const keep: SP = { range: usingPicker ? undefined : range.all ? "all" : range.key, from: range.key === "custom" && !usingPicker ? range.from : undefined, to: range.key === "custom" && !usingPicker ? range.to : undefined, fy: sp.fy, month: sp.month, q: sp.q, type: type === "all" ? undefined : type, status: status === "POSTED" ? undefined : status, category: sp.category };
   const sortHref = (key: LedgerSortField) => {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(keep)) if (v) q.set(k, v);
@@ -60,7 +64,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
     q.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
     return `/ledger?${q.toString()}`;
   };
-  const exportQuery = { range: keep.range, from: keep.from, to: keep.to, q: sp.q, type: keep.type, status: keep.status, category: sp.category };
+  const exportQuery = { range: keep.range, from: keep.from, to: keep.to, fy: sp.fy, month: sp.month, q: sp.q, type: keep.type, status: keep.status, category: sp.category };
 
   return (
     <>
@@ -72,20 +76,22 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
 
       <div className="hidden print:block">
         <h1 className="text-lg font-semibold">{biz.name} - Ledger</h1>
-        <p className="mb-3 text-sm">{range.key === "all" ? "All dates" : `${formatDate(range.from, cal)} to ${formatDate(range.to, cal)} ${cal}`}</p>
+        <p className="mb-3 text-sm">{range.all ? "All dates" : `${formatDate(range.from, cal)} to ${formatDate(range.to, cal)} ${cal}`}</p>
       </div>
 
       <div className="space-y-4">
-        <DateRangeSelector basePath="/ledger" current={range} calendar={cal} extra={{ q: sp.q, type: keep.type, status: keep.status, category: sp.category }} presets={["all", "today", "month", "fy", "lastfy"]} />
+        <DateRangeSelector basePath="/ledger" current={{ key: range.key, from: range.from, to: range.to }} calendar={cal} extra={{ q: sp.q, type: keep.type, status: keep.status, category: sp.category }} presets={["all", "today", "month", "fy", "lastfy"]} />
 
-        <form method="get" action="/ledger" className="no-print grid gap-3 rounded-lg border bg-white p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
-          <input type="hidden" name="range" value={keep.range} />
+        <form method="get" action="/ledger" className="no-print grid gap-3 rounded-lg border bg-white p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto]">
+          {keep.range && <input type="hidden" name="range" value={keep.range} />}
           {keep.from && <input type="hidden" name="from" value={keep.from} />}
           {keep.to && <input type="hidden" name="to" value={keep.to} />}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input name="q" defaultValue={sp.q} placeholder="Search bill number or description" aria-label="Search" className="pl-9" />
           </div>
+          <Select name="fy" defaultValue={sp.fy ?? ""} aria-label="Financial year"><option value="">Any financial year</option>{years.map((y) => <option key={y.id} value={y.id}>FY {y.label}</option>)}</Select>
+          <Select name="month" defaultValue={sp.month ?? ""} aria-label="Month" disabled={!selectedYear}><option value="">{selectedYear ? "Whole year" : "Pick a year, then Filter"}</option>{monthOptions.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</Select>
           <Select name="type" defaultValue={type} aria-label="Entry type"><option value="all">Debit and credit</option><option value="debit">Debit only</option><option value="credit">Credit only</option></Select>
           <Select name="category" defaultValue={sp.category ?? ""} aria-label="Category"><option value="">All categories</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
           <Select name="status" defaultValue={status} aria-label="Status"><option value="POSTED">Saved entries</option><option value="DRAFT">Drafts</option><option value="VOID">Deleted</option></Select>

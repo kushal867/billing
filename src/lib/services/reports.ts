@@ -249,7 +249,7 @@ export async function buildAnnualReport(ctx: Pick<Ctx, "businessId">, financialY
         balance: r.balance ? m(r.balance) : "",
       })),
     ],
-    totals: { date: "Total", bill: "", description: `Closing balance ${m(summary.closing)}`, debit: m(summary.debit), credit: m(summary.credit), balance: m(summary.closing) },
+    totals: { date: "Total", bill: "", description: `Closing balance ${formatRaw(m(summary.closing), biz)}`, debit: m(summary.debit), credit: m(summary.credit), balance: m(summary.closing) },
   });
   doc.sections.push({
     heading: "Monthly summary",
@@ -284,7 +284,7 @@ export async function buildAnnualReport(ctx: Pick<Ctx, "businessId">, financialY
     rows: checks.map(([item, value]) => ({ item, value: /^-?\d+\.\d\d$/.test(value) ? formatRaw(value, biz) : value })),
   });
   if (carryDiff && !carryDiff.isZero())
-    doc.warnings.push(`The opening balance recorded for this year differs from the balance carried forward from earlier years by ${m(carryDiff)}. The carried-forward figure is used for all calculations.`);
+    doc.warnings.push(`The opening balance recorded for this year differs from the balance carried forward from earlier years by ${formatRaw(m(carryDiff.abs()), biz)}. The carried-forward figure is used for all calculations.`);
   if (drafts) doc.warnings.push(`${drafts} draft entr${drafts === 1 ? "y is" : "ies are"} not included in these figures.`);
   return doc;
 }
@@ -365,7 +365,7 @@ export async function buildProfitLoss(ctx: Pick<Ctx, "businessId">, from: string
   if (pl.unclassifiedCount) {
     const n = pl.unclassifiedCount;
     doc.warnings.push(
-      `${n} billpad entr${n === 1 ? "y" : "ies"} in this period (debit ${m(pl.unclassifiedDebit)}, credit ${m(pl.unclassifiedCredit)}) ${n === 1 ? "has" : "have"} no category and ${n === 1 ? "is" : "are"} NOT included. This result is incomplete until ${n === 1 ? "it is" : "they are"} classified.`,
+      `${n} billpad entr${n === 1 ? "y" : "ies"} in this period (debit ${formatRaw(m(pl.unclassifiedDebit), biz)}, credit ${formatRaw(m(pl.unclassifiedCredit), biz)}) ${n === 1 ? "has" : "have"} no category and ${n === 1 ? "is" : "are"} NOT included. This result is incomplete until ${n === 1 ? "it is" : "they are"} classified.`,
     );
   }
   doc.notes.push("Revenue and expenses come only from entries classified with an income or expense category, and from manual journal entries.");

@@ -1,13 +1,12 @@
 import { AlertTriangle } from "lucide-react";
 import { Amt } from "@/components/amount";
 import { EmptyState } from "@/components/ui/states";
-import type { ReportDoc } from "@/lib/services/report-doc";
+import { MONEY_META, type ReportDoc } from "@/lib/services/report-doc";
 import { formatAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** HTML/print rendering of a ReportDoc. The PDF/Excel/CSV exports are produced from the same object. */
 export function ReportView({ doc }: { doc: ReportDoc }) {
-  const moneyMeta = new Set(["Opening Balance", "Total Debit", "Total Credit", "Closing Balance", "Total Revenue", "Total Expenses", "Net Profit", "Net Loss", "Imbalance"]);
   return (
     <article className="print-area rounded-lg border bg-white p-5 shadow-sm">
       <header className="mb-4 border-b pb-3">
@@ -27,7 +26,7 @@ export function ReportView({ doc }: { doc: ReportDoc }) {
           {doc.meta.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-3 border-b border-dashed py-1">
               <dt className="text-muted-foreground">{k}</dt>
-              <dd className="text-right font-medium">{moneyMeta.has(k) ? <Amt v={v} grouping={doc.grouping} tone={k === "Net Profit" ? "income" : k === "Net Loss" ? "expense" : "plain"} /> : v}</dd>
+              <dd className="text-right font-medium">{MONEY_META.has(k) ? <Amt v={v} grouping={doc.grouping} tone={k === "Net Profit" ? "income" : k === "Net Loss" ? "expense" : "plain"} /> : v}</dd>
             </div>
           ))}
         </dl>

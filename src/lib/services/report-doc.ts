@@ -29,3 +29,6 @@ export function csvEscape(v: string): string {
   const safe = /^[=+\-@\t\r]/.test(v) && !/^-?\d+(\.\d+)?$/.test(v) ? `'${v}` : v;
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
+
+/** Header lines whose values are money and should be formatted with thousands separators. */
+export const MONEY_META = new Set(["Opening Balance", "Total Debit", "Total Credit", "Closing Balance", "Total Revenue", "Total Expenses", "Net Profit", "Net Loss", "Imbalance"]);
