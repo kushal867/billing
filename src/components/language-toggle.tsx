@@ -1,28 +1,29 @@
 "use client";
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Languages } from "lucide-react";
 import { setLanguage } from "@/actions/lang";
-import { useLang } from "@/lib/i18n/client";
+import { useLang, useSetLang } from "@/lib/i18n/client";
+import { stashForms } from "@/lib/form-stash";
 import { cn } from "@/lib/utils";
 
-/** One-click switch between English and Nepali. */
+/** One-click switch between English and Nepali. Instant for everything on screen; no page reload. */
 export function LanguageToggle({ className, dark }: { className?: string; dark?: boolean }) {
   const lang = useLang();
-  const router = useRouter();
+  const setLang = useSetLang();
   const [pending, start] = useTransition();
   const next = lang === "ne" ? "en" : "ne";
   return (
     <button
       type="button"
-      onClick={() => start(async () => {
-        await setLanguage(next);
-        router.refresh(); // a soft refresh keeps anything already typed in a form
-        // The root layout sets <html lang>. If it has not switched shortly after, the soft refresh was
-        // skipped by the router cache, so fall back to a full reload rather than leave a half-translated page.
-        await new Promise((r) => setTimeout(r, 1500));
-        if (document.documentElement.lang !== next) window.location.reload();
-      })}
+      onClick={() => {
+        setLang(next); // instant: all client text switches now and the cookie is set
+        // Server-rendered text (headings, tables, reports) needs a fresh page; keep any half-typed values across it.
+        start(async () => {
+          await setLanguage(next, window.location.pathname);
+          stashForms();
+          window.location.reload();
+        });
+      }}
       disabled={pending}
       lang={next}
       aria-label={next === "ne" ? "Switch to Nepali" : "Switch to English"}
