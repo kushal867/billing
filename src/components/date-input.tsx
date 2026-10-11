@@ -1,5 +1,8 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { CalendarDays } from "lucide-react";
+import { CalendarPicker } from "@/components/calendar-picker";
+import { useT } from "@/lib/i18n/client";
 import { Input, Select } from "@/components/ui/input";
 import { adToBs, bsToAd, formatDateLong, parseEnteredDate, parseIso, type Calendar } from "@/lib/dates";
 
@@ -19,6 +22,8 @@ export function DateInput({
   invalid?: boolean; autoFocus?: boolean; name?: string; hideCalendarSwitch?: boolean;
 }) {
   const info = useMemo(() => describeDate(value, calendar), [value, calendar]);
+  const t = useT();
+  const [open, setOpen] = useState(false);
   const switchCalendar = (next: Calendar) => {
     // Convert the current value so the same real day stays selected.
     const r = parseEnteredDate(value, calendar);
@@ -31,12 +36,15 @@ export function DateInput({
     onCalendarChange?.(next);
   };
   return (
-    <div className="space-y-1">
+    <div className="relative space-y-1">
       <div className="flex gap-2">
         <Input
           id={id} name={name} inputMode="numeric" autoComplete="off" autoFocus={autoFocus} placeholder={calendar === "BS" ? "2082-04-01" : "2025-07-17"}
           value={value} onChange={(e) => onChange(e.target.value)} invalid={invalid || !!info.error} className="num"
         />
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-label={t("Choose date")} aria-expanded={open} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border bg-white hover:bg-muted">
+          <CalendarDays className="h-5 w-5" aria-hidden />
+        </button>
         {!hideCalendarSwitch && (
           <Select aria-label="Calendar" className="w-24 shrink-0" value={calendar} onChange={(e) => switchCalendar(e.target.value as Calendar)}>
             <option value="BS">BS</option>
@@ -44,6 +52,7 @@ export function DateInput({
           </Select>
         )}
       </div>
+      {open && <CalendarPicker value={value} calendar={calendar} onPick={(v) => { onChange(v); setOpen(false); }} onClose={() => setOpen(false)} />}
       {info.error ? <p role="alert" className="text-sm text-expense">{info.error}</p> : info.other ? <p className="text-xs text-muted-foreground">= {info.other}</p> : null}
     </div>
   );

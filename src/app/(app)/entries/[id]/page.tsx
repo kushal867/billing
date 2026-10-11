@@ -14,12 +14,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Amt } from "@/components/amount";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Entry" };
 export const dynamic = "force-dynamic";
 
 export default async function EntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { t: tr } = await getT();
   const ctx = await requireCtx();
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   let t;
@@ -45,12 +47,12 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <PageHeader
-        title={`Bill ${t.billNumber || "(no number)"}`}
-        description={<span className="flex items-center gap-2"><Badge tone={tone}>{t.status === "VOID" ? "Deleted" : t.status === "DRAFT" ? "Draft" : "Saved"}</Badge>{t.reversalOfId && <Badge tone="blue">Reversal entry</Badge>}</span>}
+        title={`${tr("Bill Number")} ${t.billNumber || "-"}`}
+        description={<span className="flex items-center gap-2"><Badge tone={tone}>{t.status === "VOID" ? tr("Deleted") : t.status === "DRAFT" ? tr("Draft") : tr("Saved")}</Badge>{t.reversalOfId && <Badge tone="blue">{tr("Reversal entry")}</Badge>}</span>}
         actions={editable && t.status === "POSTED" ? <EntryActions id={t.id} /> : editable ? <EntryActions id={t.id} draft /> : undefined}
       />
-      {t.status === "VOID" && <Alert tone="error" className="mb-4" title="This entry was deleted">Reason: {t.voidReason}. It no longer affects any balance or report, but is kept in the history below.</Alert>}
-      {t.reversalOfId && <Alert tone="info" className="mb-4">This is a reversal. It offsets an earlier entry and cannot be edited.</Alert>}
+      {t.status === "VOID" && <Alert tone="error" className="mb-4" title={tr("This entry was deleted")}>{tr("Reason (kept in the history)")}: {t.voidReason}. {tr("It no longer affects any balance or report, but is kept in the history below.")}</Alert>}
+      {t.reversalOfId && <Alert tone="info" className="mb-4">{tr("This is a reversal. It offsets an earlier entry and cannot be edited.")}</Alert>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <CardContent className="p-5">
@@ -68,18 +70,18 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
               />
             ) : (
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <div><dt className="text-muted-foreground">Date</dt><dd className="font-medium">{formatDate(toIso(t.transactionDate), cal)} {cal}</dd></div>
-                <div><dt className="text-muted-foreground">Bill Number</dt><dd className="font-medium">{t.billNumber}</dd></div>
-                <div><dt className="text-muted-foreground">Debit</dt><dd><Amt v={t.debitAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
-                <div><dt className="text-muted-foreground">Credit</dt><dd><Amt v={t.creditAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
-                <div className="sm:col-span-2"><dt className="text-muted-foreground">Notes</dt><dd>{t.description || "-"}</dd></div>
+                <div><dt className="text-muted-foreground">{tr("Date")}</dt><dd className="font-medium">{formatDate(toIso(t.transactionDate), cal)} {cal}</dd></div>
+                <div><dt className="text-muted-foreground">{tr("Bill Number")}</dt><dd className="font-medium">{t.billNumber}</dd></div>
+                <div><dt className="text-muted-foreground">{tr("Debit")}</dt><dd><Amt v={t.debitAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
+                <div><dt className="text-muted-foreground">{tr("Credit")}</dt><dd><Amt v={t.creditAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
+                <div className="sm:col-span-2"><dt className="text-muted-foreground">{tr("Description / Notes")}</dt><dd>{t.description || "-"}</dd></div>
               </dl>
             )}
           </CardContent>
         </Card>
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle>Record details</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{tr("Record details")}</CardTitle></CardHeader>
             <CardContent className="space-y-1 text-sm">
               <p><span className="text-muted-foreground">Entered as: </span>{t.enteredDateText || "-"} {t.enteredDateText ? t.enteredCalendar : ""}</p>
               <p><span className="text-muted-foreground">Stored date (AD): </span>{toIso(t.transactionDate)}</p>
@@ -88,7 +90,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>History</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{tr("History")}</CardTitle></CardHeader>
             <CardContent>
               <ul className="space-y-3 text-sm">
                 {trail.map((a) => (

@@ -55,6 +55,7 @@ enum ImportKind {
   CSV
   XLSX
   PDF
+  BULK
 }
 
 enum ImportStatus {

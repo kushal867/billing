@@ -183,7 +183,7 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
         cu.name AS "createdByName", uu.name AS "updatedByName",
         ${anchor.amount}::numeric + SUM(CASE WHEN t.status = 'POSTED' THEN (t."debitAmount" - t."creditAmount") * ${sign}::int ELSE 0 END)
           OVER (ORDER BY t."transactionDate", t.seq ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS balance_all,
-        COUNT(*) FILTER (WHERE t.status = 'POSTED' AND length(btrim(t."billNumber")) > 0) OVER (PARTITION BY t."billNumber") AS "dupCount",
+        COUNT(*) FILTER (WHERE t.status = 'POSTED' AND t."reversalOfId" IS NULL AND length(btrim(t."billNumber")) > 0) OVER (PARTITION BY t."billNumber") AS "dupCount",
         NULLIF(left(regexp_replace(t."billNumber", '\\D', '', 'g'), 15), '')::numeric AS bill_num,
         (s.n >= 20 AND GREATEST(t."debitAmount", t."creditAmount") > s.mean + 3 * s.sd) AS "isLarge"
       FROM "Transaction" t
@@ -225,7 +225,7 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     flags: {
-      duplicateBill: r.status === "POSTED" && Number(r.dupCount) > 1,
+      duplicateBill: r.status === "POSTED" && !r.reversalOfId && Number(r.dupCount) > 1,
       large: r.status === "POSTED" && !!r.isLarge,
       future: toIso(r.transactionDate) > today,
       reversal: !!r.reversalOfId,

@@ -13,12 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/states";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Accounts" };
 export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
   const ctx = await requireCtx();
+  const { t } = await getT();
   const write = canWrite(ctx.role);
   const biz = await getBusiness(ctx.businessId);
   const g = biz.numberGrouping;
@@ -32,16 +34,16 @@ export default async function AccountsPage() {
   return (
     <>
       <PageHeader
-        title="Accounts"
-        description="Classify billpad entries so Profit & Loss and the Trial Balance can be calculated correctly."
-        actions={<><Button asChild variant="outline"><Link href="/reports/profit-loss">Profit & Loss</Link></Button><Button asChild variant="outline"><Link href="/reports/trial-balance">Trial Balance</Link></Button></>}
+        title={t("Accounts")}
+        description={t("Classify billpad entries so Profit & Loss and the Trial Balance can be calculated correctly.")}
+        actions={<><Button asChild variant="outline"><Link href="/reports/profit-loss">{t("Profit & Loss")}</Link></Button><Button asChild variant="outline"><Link href="/reports/trial-balance">{t("Trial Balance")}</Link></Button></>}
       />
       <Alert tone="info" className="mb-5" title="Why this is separate from the ledger">
         Your billpad only records a debit or credit amount, which does not say whether money is income or an expense. Give each entry a category (when you add it, or by editing it) and KusBill posts a balanced accounting entry behind the scenes. Entries without a category are never counted as income or expense.
       </Alert>
       <div className="space-y-5">
         <Card>
-          <CardHeader><CardTitle>Categories</CardTitle><CardDescription>Choose one on an entry to classify it.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{t("Categories")}</CardTitle><CardDescription>Choose one on an entry to classify it.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto rounded-md border">
               <table className="tbl">
@@ -54,7 +56,7 @@ export default async function AccountsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Chart of accounts</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("Chart of accounts")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <SettlementPicker accounts={opts} current={biz.settlementAccountId} readOnly={!write} />
             <div className="overflow-x-auto rounded-md border">
@@ -73,13 +75,13 @@ export default async function AccountsPage() {
 
         {write && (
           <Card>
-            <CardHeader><CardTitle>Manual journal entry</CardTitle><CardDescription>For items that are not on the billpad, such as owner investment or a bank charge. Total debits must equal total credits.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>{t("Manual journal entry")}</CardTitle><CardDescription>For items that are not on the billpad, such as owner investment or a bank charge. Total debits must equal total credits.</CardDescription></CardHeader>
             <CardContent><JournalForm accounts={opts} calendar={biz.displayCalendar} grouping={g} /></CardContent>
           </Card>
         )}
 
         <Card>
-          <CardHeader><CardTitle>Recent journal entries</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("Recent journal entries")}</CardTitle></CardHeader>
           <CardContent>
             {journals.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No accounting entries yet. They appear here when you classify a billpad entry or post a journal entry.</p> : (
               <div className="overflow-x-auto rounded-md border">

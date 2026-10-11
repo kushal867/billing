@@ -74,5 +74,5 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
     return { error: "Something went wrong. Please try again.", values };
   }
   (await cookies()).set(SESSION_COOKIE, await signSession(userId, version), cookieOptions());
-  redirect("/dashboard");
+  redirect("/welcome");
 }

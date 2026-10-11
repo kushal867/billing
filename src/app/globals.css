@@ -26,3 +26,13 @@
   .tbl th { background: #eef2f7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   tr { break-inside: avoid; }
 }
+
+/* Billpad-style statement: ruled like a paper pad, one pad page per printed sheet */
+.pad-style .tbl th,
+.pad-style .tbl td { border: 1px solid #94a3b8; }
+.pad-style .tbl td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+@media print {
+  .pad-style .pad-page { break-after: page; }
+  .pad-style .pad-page:last-of-type { break-after: auto; }
+  .pad-style .tbl td { padding-top: 0.65rem; padding-bottom: 0.65rem; }
+}

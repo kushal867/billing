@@ -1,10 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@prisma/client", "bcryptjs"],
-  outputFileTracingIncludes: { "/api/export": ["./node_modules/pdfkit/js/data/**/*"] },
+  outputFileTracingIncludes: { "/api/export": ["./node_modules/pdfkit/js/data/**/*", "./src/lib/exporters/fonts/**/*"] },
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [
+      {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }],
+      },
       {
         source: "/:path*",
         headers: [

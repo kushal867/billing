@@ -13,6 +13,9 @@ import { Input, Select } from "@/components/ui/input";
 import { formatDate, parseEnteredDate, type Calendar } from "@/lib/dates";
 import { formatAmount, type Grouping } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
+import { useOffline } from "@/components/offline-provider";
+import { incrementBill, isNetworkError } from "@/lib/offline-queue";
 
 export type TableRow = {
   id: string; version: number; date: string; billNumber: string; debit: string; credit: string; balance: string | null;
@@ -32,6 +35,7 @@ export function LedgerTable({
   nextBill: string; sort: string; dir: string; sortHrefs: Record<SortKey, string>; totals: { count: number; debit: string; credit: string }; quickAdd: boolean;
 }) {
   const router = useRouter();
+  const t = useT();
   const [, startRefresh] = useTransition();
   const [editing, setEditing] = useState<{ id: string; field: Field } | null>(null);
   const [draft, setDraft] = useState("");
@@ -66,16 +70,16 @@ export function LedgerTable({
     setSaving(true);
     const res = await updateEntry(r.id, r.version, payload);
     setSaving(false);
-    if (!res.ok) { toast.error(res.fieldErrors ? Object.values(res.fieldErrors)[0] : res.error); return; } // stay in edit mode, value kept
+    if (!res.ok) { toast.error(t(res.fieldErrors ? Object.values(res.fieldErrors)[0] : res.error)); return; } // stay in edit mode, value kept
     if (res.data.status === "duplicate") {
-      toast.warning(res.data.duplicates.exact.length ? "An identical entry already exists" : `Bill number ${payload.billNumber} is already used`, {
-        duration: 10000, action: { label: "Save anyway", onClick: () => void commit(r, f, value, true) },
+      toast.warning(res.data.duplicates.exact.length ? t("An identical entry already exists") : `${t("This bill number is already used")}: ${payload.billNumber}`, {
+        duration: 10000, action: { label: t("Save anyway"), onClick: () => void commit(r, f, value, true) },
       });
       return;
     }
     setEditing(null);
-    if ((f === "debit" && value && !zero(r.credit)) || (f === "credit" && value && !zero(r.debit))) toast.info(`Moved to ${f === "debit" ? "Debit" : "Credit"} column`);
-    toast.success("Saved - balances updated");
+    if ((f === "debit" && value && !zero(r.credit)) || (f === "credit" && value && !zero(r.debit))) toast.info(`${t("Moved to")} ${f === "debit" ? t("Debit") : t("Credit")}`);
+    toast.success(t("Saved - balances updated"));
     refresh();
   }, [calendar]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,7 +102,7 @@ export function LedgerTable({
         <td className={cn("p-1", className)}>
           {f === "category" ? (
             <Select {...common} className="h-9 min-w-36" value={draft} onChange={(e) => { setDraft(e.target.value); void commit(r, f, e.target.value); }} onBlur={cancel}>
-              <option value="">Not classified</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <option value="">{t("Not classified")}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           ) : (
             <Input {...common} className={cn("h-9 min-w-24", (f === "debit" || f === "credit") && "num text-right")} inputMode={f === "debit" || f === "credit" ? "decimal" : undefined} value={draft}
@@ -111,7 +115,7 @@ export function LedgerTable({
     return (
       <td
         className={cn(className, can && "cursor-text hover:bg-blue-50 focus:bg-blue-50 focus:outline focus:outline-2 focus:outline-primary")}
-        tabIndex={can ? 0 : undefined} data-col={colName} title={can ? "Double-click or press Enter to edit" : undefined}
+        tabIndex={can ? 0 : undefined} data-col={colName} title={can ? t("Double-click or press Enter to edit") : undefined}
         onDoubleClick={() => begin(r, f)}
         onKeyDown={can ? (e) => { if (e.key === "Enter") { e.preventDefault(); begin(r, f); } else move(e, colName); } : undefined}
       >
@@ -128,13 +132,13 @@ export function LedgerTable({
   return (
     <div>
       <div className="no-print flex items-center justify-between gap-2 border-b px-3 py-2">
-        <p className="text-xs text-muted-foreground">{canWrite ? "Tip: double-click (or press Enter on) a cell to edit it. Enter saves, Esc cancels, arrow keys move." : "Read-only view."}</p>
+        <p className="text-xs text-muted-foreground">{canWrite ? t("Tip: double-click (or press Enter on) a cell to edit it. Enter saves, Esc cancels, arrow keys move.") : t("Read-only view.")}</p>
         <div className="relative">
-          <Button variant="outline" size="sm" onClick={() => setMenu((m) => !m)} aria-expanded={menu}><Columns3 className="h-4 w-4" aria-hidden /> Columns</Button>
+          <Button variant="outline" size="sm" onClick={() => setMenu((m) => !m)} aria-expanded={menu}><Columns3 className="h-4 w-4" aria-hidden /> {t("Columns")}</Button>
           {menu && (
             <div className="absolute right-0 z-20 mt-1 w-48 space-y-1 rounded-md border bg-white p-2 shadow-lg">
               {[["description", "Description"], ["category", "Category & flags"], ["meta", "Who changed it"]].map(([k, l]) => (
-                <label key={k} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"><input type="checkbox" checked={show(k)} onChange={() => toggleCol(k)} /> {l}</label>
+                <label key={k} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"><input type="checkbox" checked={show(k)} onChange={() => toggleCol(k)} /> {t(l)}</label>
               ))}
             </div>
           )}
@@ -144,15 +148,15 @@ export function LedgerTable({
         <table className="tbl" ref={tableRef}>
           <thead>
             <tr>
-              <SortTh k="date" label="Date" /><SortTh k="bill" label="Bill No." />
-              {show("description") && <th>Description</th>}
-              <SortTh k="debit" label="Debit" right /><SortTh k="credit" label="Credit" right /><SortTh k="balance" label="Balance" right />
+              <SortTh k="date" label={t("Date")} /><SortTh k="bill" label={t("Bill No.")} />
+              {show("description") && <th>{t("Description")}</th>}
+              <SortTh k="debit" label={t("Debit")} right /><SortTh k="credit" label={t("Credit")} right /><SortTh k="balance" label={t("Balance")} right />
               <th className="no-print"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             {quickAdd && <QuickAddRow calendar={calendar} nextBill={nextBill} showDesc={show("description")} onSaved={refresh} />}
-            {rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">No entries match these filters. Use the blue row above to add one.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">{t("No entries match these filters. Use the blue row above to add one.")}</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} className={r.status === "VOID" ? "bg-red-50/50 text-muted-foreground line-through" : r.flags.duplicateBill ? "bg-amber-50/60" : undefined}>
                 {cell(r, "date", formatDate(r.date, calendar), "whitespace-nowrap num")}
@@ -180,26 +184,26 @@ export function LedgerTable({
                             {r.categoryName ? <Badge tone="blue">{r.categoryName}</Badge> : editable(r) ? <Badge className="border border-dashed bg-white text-muted-foreground">+ category</Badge> : null}
                           </button>
                         )}
-                        {r.status === "DRAFT" && <Badge tone="amber">Draft</Badge>}
-                        {r.flags.duplicateBill && <Badge tone="amber">Duplicate bill no.</Badge>}
-                        {r.flags.large && <Badge tone="amber">Unusually large</Badge>}
-                        {r.flags.future && <Badge tone="amber">Future date</Badge>}
-                        {r.flags.reversal && <Badge tone="blue">Reversal</Badge>}
+                        {r.status === "DRAFT" && <Badge tone="amber">{t("Draft")}</Badge>}
+                        {r.flags.duplicateBill && <Badge tone="amber">{t("Duplicate bill no.")}</Badge>}
+                        {r.flags.large && <Badge tone="amber">{t("Unusually large")}</Badge>}
+                        {r.flags.future && <Badge tone="amber">{t("Future date")}</Badge>}
+                        {r.flags.reversal && <Badge tone="blue">{t("Reversal")}</Badge>}
                       </div>
                     )}
-                    {show("meta") && <div className="text-[11px] text-muted-foreground print:hidden">{r.createdByName ? `by ${r.createdByName}` : ""}{r.updatedByName ? ` · edited by ${r.updatedByName} ${r.updatedAt.slice(0, 10)}` : ""}</div>}
+                    {show("meta") && <div className="text-[11px] text-muted-foreground print:hidden">{r.createdByName ? `${t("by")} ${r.createdByName}` : ""}{r.updatedByName ? ` · ${t("edited by")} ${r.updatedByName} ${r.updatedAt.slice(0, 10)}` : ""}</div>}
                   </td>
                 )}
                 {cell(r, "debit", <Amt v={r.debit} grouping={grouping} blankZero />, "r")}
                 {cell(r, "credit", <Amt v={r.credit} grouping={grouping} blankZero />, "r")}
                 <td className="r font-medium">{r.balance ? <Amt v={r.balance} grouping={grouping} /> : <span className="text-muted-foreground">-</span>}</td>
                 <td className="no-print whitespace-nowrap text-right">
-                  <Button asChild variant="ghost" size="sm"><Link href={`/entries/${r.id}`} aria-label={`${editable(r) ? "Open" : "View"} bill ${r.billNumber}`}><Pencil className="h-3.5 w-3.5" aria-hidden />{editable(r) ? "Open" : "View"}</Link></Button>
+                  <Button asChild variant="ghost" size="sm"><Link href={`/entries/${r.id}`} aria-label={`${editable(r) ? "Open" : "View"} bill ${r.billNumber}`}><Pencil className="h-3.5 w-3.5" aria-hidden />{editable(r) ? t("Open") : t("View")}</Link></Button>
                   {editable(r) && (
                     <ConfirmAction
-                      trigger={<Button variant="ghost" size="sm" className="text-expense" aria-label={`Delete bill ${r.billNumber}`}>Delete</Button>}
-                      title={`Delete bill ${r.billNumber}?`} description="It will be removed from balances and reports. The deletion and your reason are kept in the history."
-                      confirmLabel="Delete entry" requireReason onConfirm={(reason) => voidEntry(r.id, reason)} onDone={() => { toast.success("Entry deleted"); refresh(); }}
+                      trigger={<Button variant="ghost" size="sm" className="text-expense" aria-label={`${t("Delete")} ${r.billNumber}`}>{t("Delete")}</Button>}
+                      title="Delete this entry?" description="The entry will be removed from the ledger, balances and reports. It is not erased from the database: the deletion and your reason are kept in the history."
+                      confirmLabel="Delete entry" requireReason onConfirm={(reason) => voidEntry(r.id, reason)} onDone={() => { toast.success(t("Entry deleted")); refresh(); }}
                     />
                   )}
                 </td>
@@ -208,7 +212,7 @@ export function LedgerTable({
           </tbody>
           <tfoot>
             <tr className="bg-muted/60 font-semibold">
-              <td className="px-3 py-2" colSpan={show("description") ? 3 : 2}>Total of {totals.count} entr{totals.count === 1 ? "y" : "ies"} matching filters</td>
+              <td className="px-3 py-2" colSpan={show("description") ? 3 : 2}>{t("Total of {n} entries matching filters", { n: totals.count })}</td>
               <td className="r px-3 py-2">{formatAmount(totals.debit, grouping)}</td>
               <td className="r px-3 py-2">{formatAmount(totals.credit, grouping)}</td>
               <td colSpan={2} />
@@ -222,6 +226,8 @@ export function LedgerTable({
 
 /** Add an entry without leaving the ledger. Enter in any field saves; focus returns to Bill No. */
 function QuickAddRow({ calendar, nextBill, showDesc, onSaved }: { calendar: Calendar; nextBill: string; showDesc: boolean; onSaved: () => void }) {
+  const t = useT();
+  const offline = useOffline();
   const [v, setV] = useState({ date: "", bill: nextBill, debit: "", credit: "", description: "" });
   const [busy, setBusy] = useState(false);
   const token = useRef("");
@@ -238,15 +244,28 @@ function QuickAddRow({ calendar, nextBill, showDesc, onSaved }: { calendar: Cale
 
   const submit = async (allowDuplicate = false) => {
     setBusy(true);
-    const res = await saveEntry({ dateText: v.date, calendar, billNumber: v.bill, debit: v.debit, credit: v.credit, description: v.description, status: "POSTED", clientToken: token.current, allowDuplicate });
+    const body = { dateText: v.date, calendar, billNumber: v.bill, debit: v.debit, credit: v.credit, description: v.description, status: "POSTED" as const, clientToken: token.current, allowDuplicate };
+    let res: Awaited<ReturnType<typeof saveEntry>>;
+    try {
+      res = await saveEntry(body);
+    } catch (e) {
+      setBusy(false);
+      if (!isNetworkError(e)) { toast.error(t("Something went wrong. Your data was not changed. Please try again.")); return; }
+      if (!offline.enqueue(body)) { toast.error(t("This device has no room left.")); return; }
+      toast.success(t("Saved on this device - will sync when online"));
+      token.current = crypto.randomUUID();
+      setV((x) => ({ ...x, bill: incrementBill(x.bill), debit: "", credit: "", description: "" }));
+      setTimeout(() => { billRef.current?.focus(); billRef.current?.select(); }, 60);
+      return;
+    }
     setBusy(false);
-    if (!res.ok) { toast.error(res.fieldErrors ? Object.values(res.fieldErrors)[0] : res.error); return; }
+    if (!res.ok) { toast.error(t(res.fieldErrors ? Object.values(res.fieldErrors)[0] : res.error)); return; }
     if (res.data.status === "duplicate") {
-      toast.warning(res.data.duplicates.exact.length ? "An identical entry already exists" : `Bill number ${v.bill} is already used`, { duration: 10000, action: { label: "Save anyway", onClick: () => void submit(true) } });
+      toast.warning(res.data.duplicates.exact.length ? t("An identical entry already exists") : `${t("This bill number is already used")}: ${v.bill}`, { duration: 10000, action: { label: t("Save anyway"), onClick: () => void submit(true) } });
       return;
     }
     try { localStorage.setItem("kusbill:workDate", JSON.stringify({ dateText: v.date, calendar })); } catch { /* ignore */ }
-    toast.success(`Entry saved - bill ${res.data.billNumber}`);
+    toast.success(`${t("Entry saved")} - ${t("Bill Number")} ${res.data.billNumber}`);
     token.current = crypto.randomUUID();
     setV((x) => ({ ...x, bill: res.data.status === "saved" ? res.data.nextBill : "", debit: "", credit: "", description: "" }));
     onSaved();
@@ -258,13 +277,13 @@ function QuickAddRow({ calendar, nextBill, showDesc, onSaved }: { calendar: Cale
 
   return (
     <tr className="no-print bg-blue-50/60">
-      <td className="p-1"><Input aria-label="New entry date" className="h-9 num" value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} onKeyDown={key} disabled={busy} /></td>
-      <td className="p-1"><Input ref={billRef} aria-label="New entry bill number" className="h-9 num" value={v.bill} onChange={(e) => setV({ ...v, bill: e.target.value })} onKeyDown={key} onFocus={(e) => e.currentTarget.select()} disabled={busy} /></td>
-      {showDesc && <td className="p-1"><Input aria-label="New entry description" className="h-9" placeholder="Description (optional)" value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} onKeyDown={key} disabled={busy} /></td>}
-      <td className="p-1"><Input aria-label="New entry debit" className="h-9 num text-right" inputMode="decimal" placeholder="Debit" value={v.debit} onChange={(e) => setV({ ...v, debit: amt(e.target.value) })} onKeyDown={key} disabled={busy} /></td>
-      <td className="p-1"><Input aria-label="New entry credit" className="h-9 num text-right" inputMode="decimal" placeholder="Credit" value={v.credit} onChange={(e) => setV({ ...v, credit: amt(e.target.value) })} onKeyDown={key} disabled={busy} /></td>
-      <td className="px-3 text-right text-xs text-muted-foreground">new</td>
-      <td className="p-1 text-right"><Button size="sm" loading={busy} onClick={() => void submit()} aria-label="Add entry"><Plus className="h-4 w-4" aria-hidden /> Add</Button></td>
+      <td className="p-1"><Input aria-label={t("Date")} className="h-9 num" value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} onKeyDown={key} disabled={busy} /></td>
+      <td className="p-1"><Input ref={billRef} aria-label={t("Bill Number")} className="h-9 num" value={v.bill} onChange={(e) => setV({ ...v, bill: e.target.value })} onKeyDown={key} onFocus={(e) => e.currentTarget.select()} disabled={busy} /></td>
+      {showDesc && <td className="p-1"><Input aria-label={t("Description")} className="h-9" placeholder={t("Description (optional)")} value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} onKeyDown={key} disabled={busy} /></td>}
+      <td className="p-1"><Input aria-label={t("Debit")} className="h-9 num text-right" inputMode="decimal" placeholder={t("Debit")} value={v.debit} onChange={(e) => setV({ ...v, debit: amt(e.target.value) })} onKeyDown={key} disabled={busy} /></td>
+      <td className="p-1"><Input aria-label={t("Credit")} className="h-9 num text-right" inputMode="decimal" placeholder={t("Credit")} value={v.credit} onChange={(e) => setV({ ...v, credit: amt(e.target.value) })} onKeyDown={key} disabled={busy} /></td>
+      <td className="px-3 text-right text-xs text-muted-foreground">{t("new")}</td>
+      <td className="p-1 text-right"><Button size="sm" loading={busy} onClick={() => void submit()} aria-label={t("Add Entry")}><Plus className="h-4 w-4" aria-hidden /> {t("Add")}</Button></td>
     </tr>
   );
 }

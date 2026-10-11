@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/ui/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ function Section({ id, title, description, children }: { id: string; title: stri
 
 export default async function SettingsPage() {
   const ctx = await requireCtx();
+  const { t } = await getT();
   const owner = ctx.role === "OWNER";
   const biz = await getBusiness(ctx.businessId);
   const [years, entries, users, audit, me] = await Promise.all([
@@ -46,20 +48,20 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Business details, dates, financial years, opening balance and users." />
+      <PageHeader title={t("Settings")} description={t("Business details, dates, financial years, opening balance and users.")} />
       {!owner && <Alert tone="info" className="mb-4">Only the owner can change business settings. You can set opening balances and change your own password.</Alert>}
       <div className="space-y-5">
-        <Section id="business" title="Business" description="Shown at the top of reports and printed statements. All optional.">
+        <Section id="business" title={t("Business")} description="Shown at the top of reports and printed statements. All optional.">
           <ProfileForm biz={biz} readOnly={!owner} />
         </Section>
-        <Section id="dates" title="Dates, numbers and sorting">
+        <Section id="dates" title={t("Dates, numbers and sorting")}>
           <PreferencesForm biz={biz} readOnly={!owner} />
         </Section>
-        <Section id="convention" title="Balance rule" description="How the Balance column is calculated. Shown on every ledger and report.">
+        <Section id="convention" title={t("Balance rule")} description="How the Balance column is calculated. Shown on every ledger and report.">
           <p className="mb-3 text-sm">Current rule: <strong>{conventionText(biz.balanceConvention)}</strong></p>
           <ConventionForm current={biz.balanceConvention} entries={entries} readOnly={!owner} />
         </Section>
-        <Section id="financial-years" title="Financial years" description="Reports and carry-forward follow these year boundaries.">
+        <Section id="financial-years" title={t("Financial years")} description="Reports and carry-forward follow these year boundaries.">
           <div className="mb-4 overflow-x-auto rounded-md border">
             <table className="tbl">
               <thead><tr><th>Year</th><th>From (AD)</th><th>To (AD)</th><th className="text-right">Opening balance</th></tr></thead>
@@ -71,24 +73,24 @@ export default async function SettingsPage() {
           </div>
           <AddFinancialYear defaultYear={defaultYear} calendar={biz.fyCalendar} readOnly={!canWrite(ctx.role)} />
         </Section>
-        <Section id="opening-balance" title="Opening balance" description="The balance brought forward from your old billpad. Stored as its own record, not as a transaction.">
+        <Section id="opening-balance" title={t("Opening balance")} description="The balance brought forward from your old billpad. Stored as its own record, not as a transaction.">
           <OpeningBalanceForm years={fyRows} calendar={biz.displayCalendar} readOnly={!canWrite(ctx.role)} />
         </Section>
-        <Section id="account" title="My account">
+        <Section id="account" title={t("My account")}>
           <PasswordForm name={me.name} />
         </Section>
         {owner && (
-          <Section id="users" title="Users" description="Owners manage everything. Accountants can add and edit entries. Viewers can only read and print.">
+          <Section id="users" title={t("Users")} description="Owners manage everything. Accountants can add and edit entries. Viewers can only read and print.">
             <UserManager users={users} meId={ctx.userId} />
           </Section>
         )}
         {owner && (
-          <Section id="backup" title="Backup and recovery" description="Download all your financial data. See the README for full PostgreSQL backup and restore instructions.">
+          <Section id="backup" title={t("Backup and recovery")} description="Download all your financial data. See the README for full PostgreSQL backup and restore instructions.">
             <Button asChild variant="outline"><a href="/api/backup" download><Download className="h-4 w-4" aria-hidden /> Download full backup (JSON)</a></Button>
           </Section>
         )}
         {owner && (
-          <Section id="audit" title="Recent activity" description="The last 50 changes to financial records and settings.">
+          <Section id="audit" title={t("Recent activity")} description="The last 50 changes to financial records and settings.">
             <div className="overflow-x-auto rounded-md border">
               <table className="tbl">
                 <thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>What</th><th>Note</th></tr></thead>

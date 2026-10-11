@@ -203,7 +203,7 @@ export type ImportSummary = { jobId: string; total: number; imported: number; sk
 
 export async function commitImport(
   ctx: Ctx,
-  input: { filename: string; kind: "CSV" | "XLSX"; table: Pick<ParsedTable, "rows" | "rowNumbers">; options: ImportOptions; includeDuplicates: boolean },
+  input: { filename: string; kind: "CSV" | "XLSX" | "BULK"; table: Pick<ParsedTable, "rows" | "rowNumbers">; options: ImportOptions; includeDuplicates: boolean; /** Refuse (and save nothing) if any row fails validation. */ strict?: boolean },
 ): Promise<ImportSummary> {
   assertWrite(ctx);
   return withBusinessLock(
@@ -213,6 +213,7 @@ export async function commitImport(
       const results = await validateRows(ctx, input.table, input.options);
       const toImport = results.filter((r) => r.status === "ok" || (input.includeDuplicates && r.status === "duplicate"));
       const failed = results.filter((r) => r.status === "error");
+      if (input.strict && failed.length) throw validation(`${failed.length} row${failed.length === 1 ? " has" : "s have"} errors. Nothing was saved.`);
       const skipped = results.length - toImport.length - failed.length;
       const job = await tx.importJob.create({
         data: {
@@ -251,7 +252,7 @@ export async function commitImport(
         });
       }
       await audit(tx, ctx, {
-        action: "IMPORT",
+        action: input.kind === "BULK" ? "BULK_ENTRY" : "IMPORT",
         entityType: "ImportJob",
         entityId: job.id,
         note: `${input.filename}: ${toImport.length} imported, ${skipped} skipped, ${failed.length} failed`,

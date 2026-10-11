@@ -98,6 +98,57 @@ export async function buildLedgerReport(ctx: Pick<Ctx, "businessId">, f: LedgerF
 }
 
 // ---------------------------------------------------------------------------
+// Billpad-style statement: ruled pages like the physical pad, with page totals
+// ---------------------------------------------------------------------------
+export const BILLPAD_ROW_OPTIONS = [10, 15, 20, 25, 30, 40] as const;
+
+export async function buildBillpadReport(ctx: Pick<Ctx, "businessId">, from: string, to: string, rowsPerPage = 25): Promise<ReportDoc> {
+  checkRange(from, to);
+  const perPage = Math.min(60, Math.max(5, Math.floor(rowsPerPage) || 25));
+  const biz = await getBusiness(ctx.businessId);
+  const cal = biz.displayCalendar;
+  const doc = baseDoc(biz, "billpad", "Billpad-style Statement", rangeLabel(from, to, cal));
+  doc.pageBreaks = true;
+  const [summary, ledger] = await Promise.all([summarizePeriod(ctx, from, to), listLedger(ctx, { from, to, pageSize: 0 })]);
+  periodMeta(doc, biz, summary);
+
+  const cols: Section["columns"] = [
+    { key: "date", label: "Date" },
+    { key: "bill", label: "Bill No." },
+    { key: "debit", label: "Debit", align: "right", type: "money" },
+    { key: "credit", label: "Credit", align: "right", type: "money" },
+    { key: "balance", label: "Balance", align: "right", type: "money" },
+  ];
+  const rows = ledger.rows;
+  const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
+  let carried = summary.opening;
+  for (let p = 0; p < pageCount; p++) {
+    const chunk = rows.slice(p * perPage, (p + 1) * perPage);
+    let dr = ZERO;
+    let cr = ZERO;
+    // The first row of every page shows the balance brought forward, exactly like turning a pad page.
+    const body: Section["rows"] = [{ date: p === 0 ? "Opening Balance" : "Brought forward", bill: "", debit: "", credit: "", balance: m(carried) }];
+    for (const r of chunk) {
+      dr = dr.plus(r.debit);
+      cr = cr.plus(r.credit);
+      body.push({ date: formatDate(r.date, cal), bill: r.billNumber, debit: r.debit.isZero() ? "" : m(r.debit), credit: r.credit.isZero() ? "" : m(r.credit), balance: r.balance ? m(r.balance) : "" });
+    }
+    const end = applyConvention(biz.balanceConvention, carried, dr, cr);
+    const last = p === pageCount - 1;
+    doc.sections.push({
+      heading: `Page ${p + 1}`,
+      columns: cols,
+      rows: body,
+      totals: { date: last ? "Closing Balance" : "Carried forward", bill: "", debit: m(dr), credit: m(cr), balance: m(end) },
+      emptyMessage: "No entries in this period.",
+    });
+    carried = end;
+  }
+  doc.notes.push(`Page totals cover the entries on that page. ${rows.length} entries on ${pageCount} page${pageCount === 1 ? "" : "s"} of up to ${perPage} rows.`);
+  return doc;
+}
+
+// ---------------------------------------------------------------------------
 // Daily
 // ---------------------------------------------------------------------------
 export async function buildDailyReport(ctx: Pick<Ctx, "businessId">, from: string, to: string = from): Promise<ReportDoc> {

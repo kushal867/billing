@@ -22,6 +22,10 @@ export type ReportDoc = {
   sections: Section[];
   notes: string[];
   warnings: string[];
+  /** Billpad-style output: one ruled page per section, with a page break between sections. */
+  pageBreaks?: boolean;
+  /** Language the labels were translated into (default English). */
+  lang?: "en" | "ne";
 };
 
 export function csvEscape(v: string): string {

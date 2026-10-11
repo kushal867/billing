@@ -1,9 +1,15 @@
 import PDFDocument from "pdfkit";
+import path from "node:path";
 import { formatMoney } from "@/lib/money";
+import { englishOf, translate } from "@/lib/i18n";
 import { MONEY_META, type Column, type ReportDoc, type Section } from "@/lib/services/report-doc";
 
-// PDFKit's built-in fonts only cover Latin-1; replace anything else so the file never contains garbage glyphs.
-const latin = (s: string) => s.replace(/[^\x20-\x7E -ÿ]/g, "?");
+// Noto Sans Devanagari (SIL OFL) covers Latin and Nepali, so one embedded font renders every report.
+const FONT_DIR = path.join(process.cwd(), "src", "lib", "exporters", "fonts");
+const REGULAR = path.join(FONT_DIR, "NotoSansDevanagari-Regular.ttf");
+const BOLD = path.join(FONT_DIR, "NotoSansDevanagari-Bold.ttf");
+// Strip control characters only; every other character is renderable with this font.
+const latin = (s: string) => s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
 
 const NAVY = "#0f172a";
 const MUTED = "#64748b";
@@ -18,6 +24,8 @@ export function reportToPdf(doc: ReportDoc): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const wide = doc.sections.some((s) => s.columns.length > 6);
     const pdf = new PDFDocument({ size: "A4", layout: wide ? "landscape" : "portrait", margin: 36, bufferPages: true, info: { Title: latin(doc.title), Author: "KusBill" } });
+    pdf.registerFont("NotoR", REGULAR);
+    pdf.registerFont("NotoB", BOLD);
     const chunks: Buffer[] = [];
     pdf.on("data", (c: Buffer) => chunks.push(c));
     pdf.on("end", () => resolve(Buffer.concat(chunks)));
@@ -27,34 +35,40 @@ export function reportToPdf(doc: ReportDoc): Promise<Buffer> {
     const width = pdf.page.width - left - pdf.page.margins.right;
     const bottom = () => pdf.page.height - pdf.page.margins.bottom - 20;
 
-    pdf.fillColor(NAVY).font("Helvetica-Bold").fontSize(16).text(latin(doc.business.name), left, pdf.y);
+    pdf.fillColor(NAVY).font("NotoB").fontSize(16).text(latin(doc.business.name), left, pdf.y);
     const contact = [doc.business.address, doc.business.phone, doc.business.email, doc.business.pan ? `PAN ${doc.business.pan}` : ""].filter(Boolean).join("  |  ");
-    if (contact) pdf.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(latin(contact));
-    if (doc.business.header) pdf.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(latin(doc.business.header));
+    if (contact) pdf.font("NotoR").fontSize(8.5).fillColor(MUTED).text(latin(contact));
+    if (doc.business.header) pdf.font("NotoR").fontSize(8.5).fillColor(MUTED).text(latin(doc.business.header));
     pdf.moveDown(0.6);
-    pdf.font("Helvetica-Bold").fontSize(13).fillColor(NAVY).text(latin(doc.title));
-    pdf.font("Helvetica").fontSize(9.5).fillColor(MUTED).text(latin(doc.subtitle));
+    pdf.font("NotoB").fontSize(13).fillColor(NAVY).text(latin(doc.title));
+    pdf.font("NotoR").fontSize(9.5).fillColor(MUTED).text(latin(doc.subtitle));
     pdf.moveDown(0.4);
     for (const [k, v] of doc.meta) {
-      pdf.font("Helvetica-Bold").fontSize(9).fillColor(NAVY).text(`${latin(k)}: `, left, pdf.y, { continued: true });
-      pdf.font("Helvetica").text(MONEY_META.has(k) && /^-?\d+(\.\d+)?$/.test(v) ? formatMoney(v, doc.grouping) : latin(v));
+      pdf.font("NotoB").fontSize(9).fillColor(NAVY).text(`${latin(k)}: `, left, pdf.y, { continued: true });
+      pdf.font("NotoR").text(MONEY_META.has(englishOf(k)) && /^-?\d+(\.\d+)?$/.test(v) ? formatMoney(v, doc.grouping) : latin(v));
     }
     for (const w of doc.warnings) {
       pdf.moveDown(0.3);
-      pdf.font("Helvetica-Bold").fontSize(9).fillColor("#b45309").text(`! ${latin(w)}`, left, pdf.y, { width });
+      pdf.font("NotoB").fontSize(9).fillColor("#b45309").text(`! ${latin(w)}`, left, pdf.y, { width });
     }
 
+    let sectionIndex = 0;
     const drawSection = (s: Section) => {
+      if (doc.pageBreaks && sectionIndex++ > 0) {
+        // Billpad style: every page of the pad starts on a fresh sheet with the business and title repeated.
+        pdf.addPage();
+        pdf.font("NotoB").fontSize(10).fillColor(NAVY).text(`${latin(doc.business.name)} - ${latin(doc.title)}`, left, pdf.y);
+      }
       pdf.moveDown(0.8);
       if (pdf.y > bottom() - 60) pdf.addPage();
-      if (s.heading) pdf.font("Helvetica-Bold").fontSize(11).fillColor(NAVY).text(latin(s.heading), left, pdf.y);
+      if (s.heading) pdf.font("NotoB").fontSize(11).fillColor(NAVY).text(latin(s.heading), left, pdf.y);
       pdf.moveDown(0.3);
       const total = s.columns.reduce((a, c) => a + (c.width ?? (c.type === "money" ? 1.1 : c.key === "description" ? 2.4 : 1)), 0);
       const colW = s.columns.map((c) => ((c.width ?? (c.type === "money" ? 1.1 : c.key === "description" ? 2.4 : 1)) / total) * width);
       const pad = 3;
 
       const drawRow = (data: Record<string, string>, opts: { head?: boolean; bold?: boolean; zebra?: boolean }) => {
-        pdf.font(opts.head || opts.bold ? "Helvetica-Bold" : "Helvetica").fontSize(8.5);
+        pdf.font(opts.head || opts.bold ? "NotoB" : "NotoR").fontSize(8.5);
         const texts = s.columns.map((c) => (opts.head ? latin(c.label) : cellText(doc, c, data[c.key] ?? "")));
         const h = Math.max(...texts.map((t, i) => pdf.heightOfString(t, { width: colW[i] - pad * 2 }))) + pad * 2;
         if (pdf.y + h > bottom()) {
@@ -76,7 +90,7 @@ export function reportToPdf(doc: ReportDoc): Promise<Buffer> {
 
       drawRow({}, { head: true });
       if (!s.rows.length) {
-        pdf.font("Helvetica-Oblique").fontSize(9).fillColor(MUTED).text(latin(s.emptyMessage ?? "No records"), left + pad, pdf.y + 4);
+        pdf.font("NotoR").fontSize(9).fillColor(MUTED).text(latin(s.emptyMessage ?? "No records"), left + pad, pdf.y + 4);
       }
       s.rows.forEach((r, i) => drawRow(r, { zebra: i % 2 === 1 }));
       if (s.totals) drawRow(s.totals, { bold: true });
@@ -85,18 +99,18 @@ export function reportToPdf(doc: ReportDoc): Promise<Buffer> {
 
     if (doc.notes.length) {
       pdf.moveDown(1);
-      for (const n of doc.notes) pdf.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(latin(n), left, pdf.y, { width });
+      for (const n of doc.notes) pdf.font("NotoR").fontSize(8.5).fillColor(MUTED).text(latin(n), left, pdf.y, { width });
     }
-    if (doc.business.footer) pdf.moveDown(0.6).font("Helvetica").fontSize(8.5).fillColor(MUTED).text(latin(doc.business.footer), left, pdf.y, { width });
+    if (doc.business.footer) pdf.moveDown(0.6).font("NotoR").fontSize(8.5).fillColor(MUTED).text(latin(doc.business.footer), left, pdf.y, { width });
 
     const range = pdf.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
       pdf.switchToPage(range.start + i);
       // Footer sits inside the bottom margin; zero the margin so PDFKit does not auto-add a page for it.
       pdf.page.margins.bottom = 0;
-      pdf.font("Helvetica").fontSize(8).fillColor(MUTED);
-      pdf.text(`Generated by KusBill on ${doc.generatedAt}`, left, pdf.page.height - 30, { width: width / 2, align: "left", lineBreak: false });
-      pdf.text(`Page ${i + 1} of ${range.count}`, left + width / 2, pdf.page.height - 30, { width: width / 2, align: "right", lineBreak: false });
+      pdf.font("NotoR").fontSize(8).fillColor(MUTED);
+      pdf.text(`${translate(doc.lang ?? "en", "Generated by KusBill on")} ${doc.generatedAt}`, left, pdf.page.height - 30, { width: width / 2, align: "left", lineBreak: false });
+      pdf.text(translate(doc.lang ?? "en", "Page {page} of {pages}", { page: i + 1, pages: range.count }), left + width / 2, pdf.page.height - 30, { width: width / 2, align: "right", lineBreak: false });
     }
     pdf.end();
   });

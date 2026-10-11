@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const biz = await getBusiness(user.businessId);
   return (
-    <AppShell user={{ name: user.name, role: user.role }} businessName={biz.name} canWrite={canWrite(user.role)}>
+    <AppShell user={{ id: user.id, name: user.name, role: user.role }} businessName={biz.name} canWrite={canWrite(user.role)}>
       {children}
     </AppShell>
   );

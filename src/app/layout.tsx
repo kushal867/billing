@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { LangProvider } from "@/lib/i18n/client";
+import { getLang } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: { default: "KusBill", template: "%s | KusBill" },
@@ -8,11 +10,12 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await getLang();
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body>
-        {children}
+        <LangProvider lang={lang}>{children}</LangProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

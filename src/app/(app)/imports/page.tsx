@@ -8,12 +8,14 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/states";
+import { getT } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Imports" };
 export const dynamic = "force-dynamic";
 
 export default async function ImportsPage() {
   const ctx = await requireCtx();
+  const { t } = await getT();
   const biz = await getBusiness(ctx.businessId);
   const jobs = await db.importJob.findMany({
     where: { businessId: ctx.businessId }, orderBy: { createdAt: "desc" }, take: 20,
@@ -21,12 +23,12 @@ export default async function ImportsPage() {
   });
   return (
     <>
-      <PageHeader title="Import old records" description="Bring in past billpad entries from a spreadsheet. You review everything before anything is saved." />
+      <PageHeader title={t("Import old records")} description={t("Bring in past billpad entries from a spreadsheet. You review everything before anything is saved.")} />
       {canWrite(ctx.role) ? (
         <Card className="mb-5"><CardContent className="p-5"><ImportWizard defaultCalendar={biz.displayCalendar} grouping={biz.numberGrouping} /></CardContent></Card>
       ) : <Alert tone="info" className="mb-5">Your account is read-only, so imports are disabled.</Alert>}
       <Card>
-        <CardHeader><CardTitle>Import history</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("Import history")}</CardTitle></CardHeader>
         <CardContent>
           {jobs.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No imports yet.</p> : (
             <div className="overflow-x-auto rounded-md border">

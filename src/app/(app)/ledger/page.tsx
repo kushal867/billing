@@ -9,6 +9,7 @@ import { monthsBetween, resolveLedgerPeriod } from "@/lib/services/ledger-period
 import { formatDate } from "@/lib/dates";
 import { conventionText } from "@/lib/services/reports";
 import { LedgerTable } from "@/components/ledger-table";
+import { getT } from "@/lib/i18n/server";
 import { LiveSearch } from "@/components/live-search";
 import { suggestNextBillNumber } from "@/lib/services/transactions";
 import { DateRangeSelector } from "@/components/date-range-selector";
@@ -34,6 +35,7 @@ const SORTABLE: Array<{ key: LedgerSortField; label: string; right?: boolean }> 
 
 export default async function LedgerPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  const { t } = await getT();
   const ctx = await requireCtx();
   const biz = await getBusiness(ctx.businessId);
   const cal = biz.displayCalendar;
@@ -70,14 +72,14 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   return (
     <>
       <PageHeader
-        title="Ledger"
-        description={`Every entry with its running balance. ${conventionText(biz.balanceConvention)}.`}
-        actions={<>{write && <Button asChild><Link href="/entries/new">Add Entry</Link></Button>}<ExportControls report="ledger" query={exportQuery} /></>}
+        title={t("Ledger")}
+        description={`${t("Every entry with its running balance.")} ${t(conventionText(biz.balanceConvention))}.`}
+        actions={<>{write && <Button asChild><Link href="/entries/new">{t("Add Entry")}</Link></Button>}{write && <Button asChild variant="outline"><Link href="/entries/bulk">{t("Bulk Entry")}</Link></Button>}<ExportControls report="ledger" query={exportQuery} /></>}
       />
 
       <div className="hidden print:block">
-        <h1 className="text-lg font-semibold">{biz.name} - Ledger</h1>
-        <p className="mb-3 text-sm">{range.all ? "All dates" : `${formatDate(range.from, cal)} to ${formatDate(range.to, cal)} ${cal}`}</p>
+        <h1 className="text-lg font-semibold">{biz.name} - {t("Ledger")}</h1>
+        <p className="mb-3 text-sm">{range.all ? t("All dates") : `${formatDate(range.from, cal)} to ${formatDate(range.to, cal)} ${cal}`}</p>
       </div>
 
       <div className="space-y-4">
@@ -88,27 +90,27 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
           {keep.from && <input type="hidden" name="from" value={keep.from} />}
           {keep.to && <input type="hidden" name="to" value={keep.to} />}
           <LiveSearch />
-          <Select name="fy" defaultValue={sp.fy ?? ""} aria-label="Financial year"><option value="">Any financial year</option>{years.map((y) => <option key={y.id} value={y.id}>FY {y.label}</option>)}</Select>
-          <Select name="month" defaultValue={sp.month ?? ""} aria-label="Month" disabled={!selectedYear}><option value="">{selectedYear ? "Whole year" : "Pick a year, then Filter"}</option>{monthOptions.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</Select>
-          <Select name="type" defaultValue={type} aria-label="Entry type"><option value="all">Debit and credit</option><option value="debit">Debit only</option><option value="credit">Credit only</option></Select>
-          <Select name="category" defaultValue={sp.category ?? ""} aria-label="Category"><option value="">All categories</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
-          <Select name="status" defaultValue={status} aria-label="Status"><option value="POSTED">Saved entries</option><option value="DRAFT">Drafts</option><option value="VOID">Deleted</option></Select>
-          <Button type="submit" variant="secondary">Filter</Button>
+          <Select name="fy" defaultValue={sp.fy ?? ""} aria-label={t("Financial year")}><option value="">{t("Any financial year")}</option>{years.map((y) => <option key={y.id} value={y.id}>{t("FY")} {y.label}</option>)}</Select>
+          <Select name="month" defaultValue={sp.month ?? ""} aria-label={t("Month")} disabled={!selectedYear}><option value="">{selectedYear ? t("Whole year") : t("Pick a year, then Filter")}</option>{monthOptions.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}</Select>
+          <Select name="type" defaultValue={type} aria-label={t("Entry type")}><option value="all">{t("Debit and credit")}</option><option value="debit">{t("Debit only")}</option><option value="credit">{t("Credit only")}</option></Select>
+          <Select name="category" defaultValue={sp.category ?? ""} aria-label={t("Category")}><option value="">{t("All categories")}</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+          <Select name="status" defaultValue={status} aria-label={t("Status")}><option value="POSTED">{t("Saved entries")}</option><option value="DRAFT">{t("Drafts")}</option><option value="VOID">{t("Deleted")}</option></Select>
+          <Button type="submit" variant="secondary">{t("Filter")}</Button>
         </form>
 
         {status === "POSTED" && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryCard label="Opening Balance" value={summary.opening.toFixed(2)} grouping={g} />
-            <SummaryCard label="Total Debit" value={summary.debit.toFixed(2)} grouping={g} />
-            <SummaryCard label="Total Credit" value={summary.credit.toFixed(2)} grouping={g} />
-            <SummaryCard label="Closing Balance" value={summary.closing.toFixed(2)} grouping={g} note={`${summary.count} entries in period`} />
+            <SummaryCard label={t("Opening Balance")} value={summary.opening.toFixed(2)} grouping={g} />
+            <SummaryCard label={t("Total Debit")} value={summary.debit.toFixed(2)} grouping={g} />
+            <SummaryCard label={t("Total Credit")} value={summary.credit.toFixed(2)} grouping={g} />
+            <SummaryCard label={t("Closing Balance")} value={summary.closing.toFixed(2)} grouping={g} note={t("{n} entries in period", { n: summary.count })} />
           </div>
         )}
 
         <Card className="overflow-hidden print-area">
           {data.rows.length === 0 && !(write && status === "POSTED") ? (
-            <EmptyState title={status === "DRAFT" ? "No drafts" : status === "VOID" ? "No deleted entries" : sp.q ? "No entries match your search" : "No entries in this period"} action={write && status === "POSTED" ? <Button asChild><Link href="/entries/new">Add Entry</Link></Button> : undefined}>
-              {sp.q ? "Try a different bill number or word, or clear the filters." : "Entries you add from your billpad will appear here with their running balance."}
+            <EmptyState title={status === "DRAFT" ? t("No drafts") : status === "VOID" ? t("No deleted entries") : sp.q ? t("No entries match your search") : t("No entries in this period")} action={write && status === "POSTED" ? <Button asChild><Link href="/entries/new">{t("Add Entry")}</Link></Button> : undefined}>
+              {sp.q ? t("Try a different bill number or word, or clear the filters.") : t("Entries you add from your billpad will appear here with their running balance.")}
             </EmptyState>
           ) : (
             <LedgerTable
@@ -124,7 +126,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
           )}
           <Pagination page={page} pageSize={50} total={data.total} basePath="/ledger" params={{ ...keep, sort: sp.sort, dir: sp.dir }} />
         </Card>
-        <p className="no-print text-xs text-muted-foreground">Balances are the running balance over the complete ledger, so they stay correct when you search, filter, sort or change pages.</p>
+        <p className="no-print text-xs text-muted-foreground">{t("Balances are the running balance over the complete ledger, so they stay correct when you search, filter, sort or change pages.")}</p>
       </div>
     </>
   );

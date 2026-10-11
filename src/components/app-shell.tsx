@@ -6,6 +6,10 @@ import { BookOpen, FileBarChart, Landmark, LayoutDashboard, LogOut, Menu, PlusCi
 import { logout } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
+import { LanguageToggle } from "@/components/language-toggle";
+import { AlertsBell } from "@/components/alerts-bell";
+import { OfflineProvider } from "@/components/offline-provider";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,6 +23,7 @@ const NAV = [
 
 function NavLinks({ onNavigate, canWrite }: { onNavigate?: () => void; canWrite: boolean }) {
   const path = usePathname();
+  const t = useT();
   return (
     <nav aria-label="Main" className="space-y-1">
       {NAV.filter((n) => canWrite || n.href !== "/entries/new").map(({ href, label, icon: Icon }) => {
@@ -31,7 +36,7 @@ function NavLinks({ onNavigate, canWrite }: { onNavigate?: () => void; canWrite:
             aria-current={active ? "page" : undefined}
             className={cn("flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium", active ? "bg-primary text-white" : "text-slate-200 hover:bg-white/10")}
           >
-            <Icon className="h-4 w-4" aria-hidden /> {label}
+            <Icon className="h-4 w-4" aria-hidden /> {t(label)}
           </Link>
         );
       })}
@@ -48,16 +53,18 @@ function Brand() {
   );
 }
 
-export function AppShell({ user, businessName, canWrite, children }: { user: { name: string; role: string }; businessName: string; canWrite: boolean; children: React.ReactNode }) {
+export function AppShell({ user, businessName, canWrite, children }: { user: { id: string; name: string; role: string }; businessName: string; canWrite: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
+  const t = useT();
   useEffect(() => setOpen(false), [path]);
 
   const account = (
     <div className="space-y-2 border-t border-white/10 pt-3 text-sm text-slate-300">
-      <p className="truncate px-1">{user.name} <span className="text-xs text-slate-400">({user.role.toLowerCase()})</span></p>
+      <p className="truncate px-1">{user.name} <span className="text-xs text-slate-400">({t(user.role === "OWNER" ? "Owner" : user.role === "ACCOUNTANT" ? "Accountant" : "Viewer")})</span></p>
+      <LanguageToggle dark className="w-full justify-center" />
       <form action={logout}>
-        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 hover:bg-white/10" type="submit"><LogOut className="h-4 w-4" aria-hidden /> Sign out</button>
+        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 hover:bg-white/10" type="submit"><LogOut className="h-4 w-4" aria-hidden /> {t("Sign out")}</button>
       </form>
     </div>
   );
@@ -72,20 +79,23 @@ export function AppShell({ user, businessName, canWrite, children }: { user: { n
       <div className="min-w-0 flex-1">
         <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-white px-4 py-2.5 lg:px-8">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label={t("Open menu")} aria-expanded={open} onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></Button>
             <span className="truncate text-sm font-medium text-navy">{businessName}</span>
           </div>
+          <div className="flex items-center gap-2">
+          <AlertsBell />
           {canWrite && (
-            <Button asChild size="sm"><Link href="/entries/new"><PlusCircle className="h-4 w-4" aria-hidden /> Add Entry</Link></Button>
+            <Button asChild size="sm"><Link href="/entries/new"><PlusCircle className="h-4 w-4" aria-hidden /> {t("Add Entry")}</Link></Button>
           )}
+          </div>
         </header>
 
         {open && (
-          <div className="no-print fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-            <button className="absolute inset-0 bg-navy/50" aria-label="Close menu" onClick={() => setOpen(false)} />
+          <div className="no-print fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t("Menu")}>
+            <button className="absolute inset-0 bg-navy/50" aria-label={t("Close menu")} onClick={() => setOpen(false)} />
             <div className="absolute inset-y-0 left-0 flex w-64 flex-col justify-between bg-navy p-4">
               <div className="space-y-6">
-                <div className="flex items-center justify-between"><Brand /><Button variant="ghost" size="icon" className="text-white hover:bg-white/10" aria-label="Close menu" onClick={() => setOpen(false)}><X className="h-5 w-5" /></Button></div>
+                <div className="flex items-center justify-between"><Brand /><Button variant="ghost" size="icon" className="text-white hover:bg-white/10" aria-label={t("Close menu")} onClick={() => setOpen(false)}><X className="h-5 w-5" /></Button></div>
                 <NavLinks canWrite={canWrite} onNavigate={() => setOpen(false)} />
               </div>
               {account}
@@ -93,7 +103,9 @@ export function AppShell({ user, businessName, canWrite, children }: { user: { n
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-5 lg:px-8 lg:py-6">{children}</main>
+        <OfflineProvider userId={user.id}>
+          <main className="mx-auto w-full max-w-7xl px-4 py-5 lg:px-8 lg:py-6">{children}</main>
+        </OfflineProvider>
       </div>
     </div>
   );

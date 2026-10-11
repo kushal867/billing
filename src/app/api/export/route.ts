@@ -5,6 +5,7 @@ import { buildReport, REPORT_SLUGS, type ReportSlug } from "@/lib/services/repor
 import { reportToCsv } from "@/lib/exporters/csv";
 import { reportToXlsx } from "@/lib/exporters/xlsx";
 import { reportToPdf } from "@/lib/exporters/pdf";
+import { getLang } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const format = p.format;
   if (!["pdf", "xlsx", "csv"].includes(format)) return NextResponse.json({ error: "Unknown format" }, { status: 400 });
   try {
-    const { doc, range } = await buildReport(ctx, slug, p);
+    const { doc, range } = await buildReport(ctx, slug, p, p.lang === "en" || p.lang === "ne" ? p.lang : await getLang());
     const base = `kusbill-${slug}-${range.key === "all" ? "all" : `${range.from}_${range.to}`}`;
     let body: Buffer | string;
     let type: string;

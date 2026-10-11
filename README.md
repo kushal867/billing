@@ -93,6 +93,16 @@ PDFs can be uploaded **for reference only**. KusBill does not OCR or read them, 
 
 ---
 
+## Everyday-use features
+
+- **Nepali language (नेपाली).** One-click switch (sidebar, sign-in page and setup wizard). Screens, buttons, validation messages and report labels are translated; month names show in Nepali script. Reports exported to **PDF, Excel and CSV follow the chosen language**, and PDFs embed *Noto Sans Devanagari* (SIL Open Font License, `src/lib/exporters/fonts/`), so Nepali text prints correctly. Numbers and bill numbers stay in Latin digits. Translations live in `src/lib/i18n/ne.ts` (the English text is the key; anything untranslated falls back to English). Coverage is the daily screens (entry, ledger, dashboard, reports, alerts, setup, bulk entry); some long Settings/Accounts/Import form labels are still English.
+- **Guided first-time setup (`/welcome`).** Three skippable steps: business name and date calendar, opening balance, first entry. New accounts land there; until all three are done the dashboard shows a checklist (progress is derived from real data).
+- **Billpad-style print (`Reports → Billpad Print`).** Ruled pages like the paper pad: Date, Bill No., Debit, Credit, Balance, with *Brought forward* at the top of each page and *Carried forward / Closing Balance* page totals. Choose rows per page (10-40). Prints one pad page per sheet, and exports to PDF/Excel/CSV.
+- **Calendar date picker.** Calendar button on every date field: BS or AD month view with the other calendar's day shown small under each date.
+- **Bulk entry (`/entries/bulk`).** Type or paste (from Excel) a whole page of bills. Rows are validated with the same rules as imports; **nothing is saved unless every row is valid**; unsaved pages survive a reload. Batches appear in Import history.
+- **Alerts and reminders (`/alerts`, header bell, dashboard).** Missing bill numbers in a numeric series, unusually large recent amounts, duplicate bill numbers, drafts waiting, future-dated entries, no entries for 3+ days, uncategorised entries. Reminders can be dismissed per device and reappear only if their content changes.
+- **Works through internet drops.** If the connection fails while you save an entry (single entry, quick-add row or bulk page), it is kept **on this device** and sent automatically, in order, when the internet returns (banner shows what is waiting). Each queued entry has a unique token so retrying, or a second open tab syncing, can never create a duplicate. Entries the server rejects (invalid, duplicate) are held under *Needs attention* with Retry / Save anyway / Discard. If the page is reloaded while offline, a small offline page (`/offline.html`, served by a service worker that caches **only static files, never pages or financial data**) lets you keep typing bills. Limits: this covers *adding* entries; viewing or editing existing data needs a connection. Queued entries are stored unencrypted in the browser's local storage on that device, so use it only on devices you trust.
+
 ## Project structure
 
 ```
@@ -203,7 +213,7 @@ Before releasing: `npm run lint && npm run typecheck && npm test && npm run buil
 ## Known limitations
 
 - **Self-service sign-up creates a separate business per account.** Data is isolated per business (tested), but there is **no email verification or password-reset email yet**; sign-up is rate limited to 5 per hour per IP. Set `ALLOW_SIGNUP=false` to turn the public sign-up page off.
-- **PDF export uses built-in Latin fonts**; Devanagari (Nepali script) text in business names or descriptions is shown as `?` in PDFs. Screen, Excel and CSV are unaffected. Embed a Unicode font in `src/lib/exporters/pdf.ts` if you need it.
+- **PDF export uses the embedded Noto Sans Devanagari font**, which covers Latin and Devanagari. Other scripts are not supported in PDFs.
 - **BS conversion covers 2000–2090.** Dates outside this range are rejected for BS entry (AD entry always works).
 - **PDFs are stored for reference, not OCR’d** (by design, see Imports).
 - Balances are derived on read with a SQL window function; this is comfortably fast for tens of thousands of entries. For millions of rows a materialised running balance would be the next step.

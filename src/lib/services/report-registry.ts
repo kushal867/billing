@@ -7,17 +7,24 @@ import { toIso } from "@/lib/dates";
 import type { LedgerFilters } from "./ledger";
 import { ensureCurrentFinancialYear, getBusiness } from "./periods";
 import { resolveLedgerPeriod } from "./ledger-period";
-import { buildAnnualReport, buildDailyReport, buildLedgerReport, buildMonthlyReport, buildProfitLoss, buildTrialBalance } from "./reports";
+import { buildBillpadReport, buildAnnualReport, buildDailyReport, buildLedgerReport, buildMonthlyReport, buildProfitLoss, buildTrialBalance } from "./reports";
 import type { ReportDoc } from "./report-doc";
+import type { Lang } from "@/lib/i18n";
+import { translateDoc } from "@/lib/i18n/doc";
 
-export const REPORT_SLUGS = ["ledger", "daily", "monthly", "annual", "profit-loss", "trial-balance"] as const;
+export const REPORT_SLUGS = ["ledger", "daily", "monthly", "annual", "profit-loss", "trial-balance", "billpad"] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 export type ReportParams = Record<string, string | undefined>;
 
 export type BuiltReport = { doc: ReportDoc; range: { key: RangeKey; from: string; to: string }; fyId?: string; biz: Business };
 
 /** Single entry point used by both the report pages and the export API, so exports always match the screen. */
-export async function buildReport(ctx: Ctx, slug: ReportSlug, sp: ReportParams): Promise<BuiltReport> {
+export async function buildReport(ctx: Ctx, slug: ReportSlug, sp: ReportParams, lang: Lang = "en"): Promise<BuiltReport> {
+  const built = await buildReportEn(ctx, slug, sp);
+  return { ...built, doc: translateDoc(built.doc, lang) };
+}
+
+async function buildReportEn(ctx: Ctx, slug: ReportSlug, sp: ReportParams): Promise<BuiltReport> {
   const biz = await getBusiness(ctx.businessId);
   const cfg = { ...biz, displayCalendar: biz.displayCalendar };
   const withDefault = (key: RangeKey) => resolveRange({ ...sp, range: sp.range ?? (sp.from && sp.to ? "custom" : key) }, cfg);
@@ -36,6 +43,10 @@ export async function buildReport(ctx: Ctx, slug: ReportSlug, sp: ReportParams):
         dir: "asc",
       };
       return { doc: await buildLedgerReport(ctx, f), range: r, biz };
+    }
+    case "billpad": {
+      const r = withDefault("month");
+      return { doc: await buildBillpadReport(ctx, r.from, r.to, Number(sp.rows) || 25), range: r, biz };
     }
     case "daily": {
       const r = withDefault("today");
