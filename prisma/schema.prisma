@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  ACCOUNTANT
+  VIEWER
+}
+
+/// How the Balance column is calculated.
+/// DEBIT_PLUS  : Balance = Previous Balance + Debit - Credit   (billpad-compatible default)
+/// CREDIT_PLUS : Balance = Previous Balance + Credit - Debit
+enum BalanceConvention {
+  DEBIT_PLUS
+  CREDIT_PLUS
+}
+
+enum CalendarSystem {
+  BS
+  AD
+}
+
+enum NumberGrouping {
+  INTERNATIONAL
+  INDIAN
+}
+
+enum TransactionStatus {
+  DRAFT
+  POSTED
+  VOID
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+enum ImportKind {
+  CSV
+  XLSX
+  PDF
+}
+
+enum ImportStatus {
+  COMPLETED
+  REFERENCE_ONLY
+  FAILED
+}
+
+model Business {
+  id                     String            @id @default(uuid()) @db.Uuid
+  name                   String            @default("My Business")
+  address                String            @default("")
+  phone                  String            @default("")
+  email                  String            @default("")
+  panNumber              String            @default("")
+  currency               String            @default("NPR")
+  currencySymbol         String            @default("Rs.")
+  displayCalendar        CalendarSystem    @default(BS)
+  numberGrouping         NumberGrouping    @default(INTERNATIONAL)
+  balanceConvention      BalanceConvention @default(DEBIT_PLUS)
+  /// Financial year start, expressed in the configured fyCalendar. Nepal default: Shrawan (4) 1 in BS.
+  fyCalendar             CalendarSystem    @default(BS)
+  fyStartMonth           Int               @default(4)
+  fyStartDay             Int               @default(1)
+  defaultSortField       String            @default("date")
+  defaultSortDir         String            @default("asc")
+  reportHeader           String            @default("")
+  reportFooter           String            @default("")
+  settlementAccountId    String?           @db.Uuid
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  users           User[]
+  financialYears  FinancialYear[]
+  openingBalances OpeningBalance[]
+  transactions    Transaction[]
+  categories      Category[]
+  accounts        Account[]
+  journalEntries  JournalEntry[]
+  auditLogs       AuditLog[]
+  importJobs      ImportJob[]
+}
+
+model User {
+  id             String    @id @default(uuid()) @db.Uuid
+  businessId     String    @db.Uuid
+  email          String    @unique
+  name           String
+  passwordHash   String
+  role           Role      @default(ACCOUNTANT)
+  /// Bumped on password change / deactivation so old sessions stop working.
+  sessionVersion Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
+}
+
+model FinancialYear {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  label      String
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  createdAt  DateTime @default(now())
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  openingBalance OpeningBalance?
+
+  @@unique([businessId, label])
+  @@index([businessId, startDate])
+}
+
+/// Explicit opening balance record. NOT a transaction.
+model OpeningBalance {
+  id              String   @id @default(uuid()) @db.Uuid
+  businessId      String   @db.Uuid
+  financialYearId String   @unique @db.Uuid
+  amount          Decimal  @db.Decimal(16, 2)
+  effectiveDate   DateTime @db.Date
+  notes           String   @default("")
+  createdBy       String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, effectiveDate])
+}
+
+model Category {
+  id         String       @id @default(uuid()) @db.Uuid
+  businessId String       @db.Uuid
+  name       String
+  kind       CategoryKind
+  accountId  String       @db.Uuid
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model Account {
+  id         String      @id @default(uuid()) @db.Uuid
+  businessId String      @db.Uuid
+  code       String
+  name       String
+  type       AccountType
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  categories   Category[]
+  journalLines JournalLine[]
+
+  @@unique([businessId, code])
+  @@index([businessId, type])
+}
+
+model Transaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  /// Monotonic tie-breaker for deterministic ordering of same-date entries.
+  seq             BigInt            @unique @default(autoincrement())
+  businessId      String            @db.Uuid
+  transactionDate DateTime          @db.Date
+  /// The date exactly as the user typed it, plus the calendar it was typed in.
+  enteredDateText String            @default("")
+  enteredCalendar CalendarSystem    @default(AD)
+  billNumber      String            @default("")
+  debitAmount     Decimal           @default(0) @db.Decimal(16, 2)
+  creditAmount    Decimal           @default(0) @db.Decimal(16, 2)
+  description     String            @default("")
+  categoryId      String?           @db.Uuid
+  status          TransactionStatus @default(POSTED)
+  /// Optimistic-concurrency counter, bumped on every change.
+  version         Int               @default(1)
+  /// Idempotency key from the entry form; prevents double-submit duplicates.
+  clientToken     String?
+  reversalOfId    String?           @db.Uuid
+  voidReason      String?
+  importJobId     String?           @db.Uuid
+  createdBy       String            @db.Uuid
+  updatedBy       String?           @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  business     Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  category     Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  journalEntry JournalEntry[]
+
+  @@unique([businessId, clientToken])
+  @@index([businessId, transactionDate, seq])
+  @@index([businessId, billNumber])
+  @@index([businessId, status])
+  @@index([businessId, categoryId])
+  @@index([importJobId])
+}
+
+model JournalEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  businessId    String   @db.Uuid
+  entryDate     DateTime @db.Date
+  memo          String   @default("")
+  reference     String   @default("")
+  /// Set when the entry was generated from a classified billpad transaction.
+  transactionId String?  @unique @db.Uuid
+  createdBy     String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  lines       JournalLine[]
+
+  @@index([businessId, entryDate])
+}
+
+model JournalLine {
+  id             String  @id @default(uuid()) @db.Uuid
+  journalEntryId String  @db.Uuid
+  accountId      String  @db.Uuid
+  debit          Decimal @default(0) @db.Decimal(16, 2)
+  credit         Decimal @default(0) @db.Decimal(16, 2)
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  userId     String?  @db.Uuid
+  userName   String   @default("")
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model ImportJob {
+  id           String       @id @default(uuid()) @db.Uuid
+  businessId   String       @db.Uuid
+  userId       String       @db.Uuid
+  filename     String
+  kind         ImportKind
+  status       ImportStatus
+  totalRows    Int          @default(0)
+  importedRows Int          @default(0)
+  skippedRows  Int          @default(0)
+  failedRows   Int          @default(0)
+  mapping      Json?
+  report       Json?
+  /// Only stored for PDF reference uploads.
+  fileData     Bytes?
+  createdAt    DateTime     @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+}
+
+/// DB-backed rate limiter (works on serverless where memory is not shared).
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  lockedUntil DateTime?
+}

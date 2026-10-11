@@ -1,0 +1,31 @@
+/** A renderer-neutral report. The same object drives the HTML view, print, PDF, Excel and CSV. */
+export type Column = { key: string; label: string; align?: "left" | "right"; type?: "text" | "money" | "int"; width?: number };
+export type Cell = string;
+export type Row = Record<string, Cell>;
+export type Section = {
+  heading?: string;
+  columns: Column[];
+  rows: Row[];
+  /** Footer row (totals). */
+  totals?: Row;
+  emptyMessage?: string;
+};
+export type ReportDoc = {
+  slug: string;
+  title: string;
+  subtitle: string;
+  business: { name: string; address: string; phone: string; email: string; pan: string; header: string; footer: string };
+  grouping: "INTERNATIONAL" | "INDIAN";
+  currencySymbol: string;
+  generatedAt: string;
+  meta: Array<[string, string]>;
+  sections: Section[];
+  notes: string[];
+  warnings: string[];
+};
+
+export function csvEscape(v: string): string {
+  // Guard against spreadsheet formula injection from user-entered text.
+  const safe = /^[=+\-@\t\r]/.test(v) && !/^-?\d+(\.\d+)?$/.test(v) ? `'${v}` : v;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
