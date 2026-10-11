@@ -103,7 +103,7 @@ describe("profit & loss from categorised accounts", () => {
     expect(pl.net.toFixed(2)).toBe("6999.50");
     expect(pl.unclassifiedCount).toBe(1);
     const doc = await buildProfitLoss(ctx, "2025-08-01", "2025-08-31");
-    expect(doc.warnings.join(" ")).toMatch(/NOT included/);
+    expect(doc.warnings.join(" ")).toMatch(/has no category and is NOT included/);
     expect(doc.sections[2].totals).toMatchObject({ name: "Net Profit", amount: "6999.50" });
   });
 

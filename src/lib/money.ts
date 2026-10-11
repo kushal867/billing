@@ -15,27 +15,17 @@ export function parseMoney(input: string | number | null | undefined): Decimal |
   return D(s);
 }
 
-export type Grouping = "INTERNATIONAL" | "INDIAN";
+export type { Grouping } from "./format";
+import { groupDigits, type Grouping } from "./format";
 
 export function formatMoney(value: Prisma.Decimal.Value | null | undefined, grouping: Grouping = "INTERNATIONAL"): string {
   const d = D(value);
-  const fixed = d.abs().toFixed(2);
-  const [int, frac] = fixed.split(".");
-  let grouped: string;
-  if (grouping === "INDIAN" && int.length > 3) {
-    const last3 = int.slice(-3);
-    const rest = int.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-    grouped = `${rest},${last3}`;
-  } else {
-    grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
-  return `${d.isNegative() && !d.isZero() ? "-" : ""}${grouped}.${frac}`;
+  return `${d.isNegative() && !d.isZero() ? "-" : ""}${groupDigits(d.abs().toFixed(2), grouping)}`;
 }
 
 export function formatRs(value: Prisma.Decimal.Value | null | undefined, grouping: Grouping = "INTERNATIONAL", symbol = "Rs."): string {
   const d = D(value);
-  const body = formatMoney(d.abs(), grouping);
-  return `${d.isNegative() && !d.isZero() ? "-" : ""}${symbol} ${body}`;
+  return `${d.isNegative() && !d.isZero() ? "-" : ""}${symbol} ${groupDigits(d.abs().toFixed(2), grouping)}`;
 }
 
 export const sum = (values: Array<Prisma.Decimal.Value>): Decimal => values.reduce<Decimal>((a, v) => a.plus(v), ZERO);

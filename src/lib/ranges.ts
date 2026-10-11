@@ -1,7 +1,8 @@
 import { addDays, financialYearRange, financialYearStartFor, todayIso, adToBs, bsToAd, parseIso, type Calendar } from "./dates";
 
-export type RangeKey = "today" | "month" | "last30" | "fy" | "lastfy" | "custom";
+export type RangeKey = "all" | "today" | "month" | "last30" | "fy" | "lastfy" | "custom";
 export const RANGE_LABELS: Record<RangeKey, string> = {
+  all: "All time",
   today: "Today",
   month: "This month",
   last30: "Last 30 days",
@@ -34,6 +35,8 @@ export function resolveRange(
   const key = (sp.range as RangeKey) in RANGE_LABELS ? (sp.range as RangeKey) : isIso(sp.from) && isIso(sp.to) ? "custom" : "fy";
   const fyStart = financialYearStartFor(today, cfg.fyCalendar, cfg.fyStartMonth, cfg.fyStartDay);
   switch (key) {
+    case "all":
+      return { key, from: "1900-01-01", to: "2999-12-31" };
     case "today":
       return { key, from: today, to: today };
     case "month":

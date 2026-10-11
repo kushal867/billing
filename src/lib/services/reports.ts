@@ -51,7 +51,6 @@ function periodMeta(doc: ReportDoc, biz: Business, s: { opening: Decimal; closin
   );
 }
 
-const MONEY_COLS = (extra: Section["columns"] = []) => extra;
 
 // ---------------------------------------------------------------------------
 // Ledger statement (also used for ledger exports; reflects active filters)
@@ -363,10 +362,12 @@ export async function buildProfitLoss(ctx: Pick<Ctx, "businessId">, from: string
     totals: { name: pl.net.isNegative() ? "Net Loss" : "Net Profit", amount: m(pl.net) },
   });
   doc.meta.push(["Total Revenue", m(pl.revenue)], ["Total Expenses", m(pl.expenses)], [pl.net.isNegative() ? "Net Loss" : "Net Profit", m(pl.net)]);
-  if (pl.unclassifiedCount)
+  if (pl.unclassifiedCount) {
+    const n = pl.unclassifiedCount;
     doc.warnings.push(
-      `${pl.unclassifiedCount} billpad entr${pl.unclassifiedCount === 1 ? "y" : "ies"} in this period (debit ${m(pl.unclassifiedDebit)}, credit ${m(pl.unclassifiedCredit)}) have no category and are NOT included. This result is incomplete until they are classified.`,
+      `${n} billpad entr${n === 1 ? "y" : "ies"} in this period (debit ${m(pl.unclassifiedDebit)}, credit ${m(pl.unclassifiedCredit)}) ${n === 1 ? "has" : "have"} no category and ${n === 1 ? "is" : "are"} NOT included. This result is incomplete until ${n === 1 ? "it is" : "they are"} classified.`,
     );
+  }
   doc.notes.push("Revenue and expenses come only from entries classified with an income or expense category, and from manual journal entries.");
   return doc;
 }

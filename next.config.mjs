@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@prisma/client", "bcryptjs"],
+  outputFileTracingIncludes: { "/api/export": ["./node_modules/pdfkit/js/data/**/*"] },
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [
