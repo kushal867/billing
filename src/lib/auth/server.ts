@@ -6,8 +6,9 @@ import type { Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { readSession, SESSION_COOKIE } from "./session";
 import type { Ctx } from "./context";
+import { verificationRequired } from "@/lib/mail";
 
-export type SessionUser = { id: string; name: string; email: string; role: Role; businessId: string };
+export type SessionUser = { id: string; name: string; email: string; role: Role; businessId: string; emailVerified: boolean };
 
 /** Loads the signed-in user from the database (so deactivation and password changes take effect immediately). */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
@@ -16,12 +17,14 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!session) return null;
   const user = await db.user.findUnique({ where: { id: session.userId } });
   if (!user || !user.isActive || user.sessionVersion !== session.version) return null;
-  return { id: user.id, name: user.name, email: user.email, role: user.role, businessId: user.businessId };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, businessId: user.businessId, emailVerified: !!user.emailVerifiedAt };
 });
 
 export async function requireUser(): Promise<SessionUser> {
   const u = await getSessionUser();
   if (!u) redirect("/login");
+  // Unverified accounts only see the "check your email" page (when the server can send email).
+  if (!u.emailVerified && verificationRequired()) redirect("/verify-email");
   return u;
 }
 
@@ -33,5 +36,6 @@ export async function requireCtx(): Promise<Ctx> {
 /** For route handlers: returns null instead of redirecting. */
 export async function getCtx(): Promise<Ctx | null> {
   const u = await getSessionUser();
+  if (u && !u.emailVerified && verificationRequired()) return null;
   return u ? { userId: u.id, userName: u.name, businessId: u.businessId, role: u.role } : null;
 }

@@ -58,6 +58,11 @@ enum ImportKind {
   BULK
 }
 
+enum AuthTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
 enum ImportStatus {
   COMPLETED
   REFERENCE_ONLY
@@ -109,12 +114,46 @@ model User {
   /// Bumped on password change / deactivation so old sessions stop working.
   sessionVersion Int       @default(0)
   isActive       Boolean   @default(true)
+  /// Null until the person proves they own the email address (existing users were backfilled).
+  emailVerifiedAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  tokens   AuthToken[]
+  sessions Session[]
 
   @@index([businessId])
+}
+
+/// One-time, expiring tokens for email verification and password reset. Only the SHA-256 hash is stored.
+model AuthToken {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @db.Uuid
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+/// One row per signed-in device/browser. Lets people see where they are signed in and sign devices out.
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  userAgent  String    @default("")
+  ip         String    @default("")
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
 }
 
 model FinancialYear {

@@ -4,11 +4,12 @@ import { LoginForm } from "./login-form";
 import { signupEnabled } from "@/lib/services/signup";
 import { getT } from "@/lib/i18n/server";
 import { LanguageToggle } from "@/components/language-toggle";
+import { Alert } from "@/components/ui/alert";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string }> }) {
+  const { next, reset } = await searchParams;
   const { t } = await getT();
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -18,6 +19,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1 className="text-2xl font-semibold text-navy">KusBill</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("Your Bills. Your Balance. Automatically.")}</p>
         </div>
+        {reset === "1" && <Alert tone="success">{t("Your password was changed. Please sign in.")}</Alert>}
         <LoginForm next={next} />
         <div className="flex justify-center"><LanguageToggle /></div>
         {signupEnabled() && (

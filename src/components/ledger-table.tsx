@@ -251,7 +251,7 @@ function QuickAddRow({ calendar, nextBill, showDesc, onSaved }: { calendar: Cale
     } catch (e) {
       setBusy(false);
       if (!isNetworkError(e)) { toast.error(t("Something went wrong. Your data was not changed. Please try again.")); return; }
-      if (!offline.enqueue(body)) { toast.error(t("This device has no room left.")); return; }
+      if (!(await offline.enqueue(body))) { toast.error(t("This device has no room left.")); return; }
       toast.success(t("Saved on this device - will sync when online"));
       token.current = crypto.randomUUID();
       setV((x) => ({ ...x, bill: incrementBill(x.bill), debit: "", credit: "", description: "" }));

@@ -53,11 +53,11 @@
     date: "मिति", bill: "बिल नम्बर", debit: "डेबिट", credit: "क्रेडिट", desc: "विवरण (ऐच्छिक)",
     save: "यही उपकरणमा सुरक्षित गर्नुहोस्", retry: "फेरि प्रयास गर्नुहोस्", waiting: "प्रविष्टि सिङ्क हुन बाँकी",
     saved: "सुरक्षित भयो। इन्टरनेट आएपछि पठाइनेछ।", needDate: "मिति YYYY-MM-DD मा लेख्नुहोस्", needBill: "बिल नम्बर लेख्नुहोस्",
-    needAmt: "डेबिट वा क्रेडिट मध्ये एउटा मात्र लेख्नुहोस्", badAmt: "रकम सही छैन (दशमलव पछि बढीमा २ अङ्क)", noUser: "पहिले इन्टरनेट सहित एकपटक KusBill मा प्रवेश गर्नुहोस्।", full: "यो उपकरणमा ठाउँ सकियो।"
+    needAmt: "डेबिट वा क्रेडिट मध्ये एउटा मात्र लेख्नुहोस्", badAmt: "रकम सही छैन (दशमलव पछि बढीमा २ अङ्क)", noUser: "पहिले इन्टरनेट सहित एकपटक KusBill मा प्रवेश गर्नुहोस्।", full: "यो उपकरणमा ठाउँ सकियो।", noCrypto: "यो ब्राउजरले सुरक्षित भण्डारण (इन्क्रिप्सन) समर्थन गर्दैन, त्यसैले यहाँ सुरक्षित गर्न सकिँदैन।"
   };
   var EN = {
     saved: "Saved. It will be sent when the internet is back.", needDate: "Enter the date as YYYY-MM-DD", needBill: "Enter the bill number",
-    needAmt: "Enter either a debit or a credit amount (not both)", badAmt: "Amount is not valid (up to 2 decimals)", noUser: "Open KusBill once while online and sign in first.", full: "This device has no room left."
+    needAmt: "Enter either a debit or a credit amount (not both)", badAmt: "Amount is not valid (up to 2 decimals)", noUser: "Open KusBill once while online and sign in first.", full: "This device has no room left.", noCrypto: "This browser does not support secure (encrypted) storage, so entries cannot be saved here."
   };
   var lang = /(?:^|; )kb_lang=ne/.test(document.cookie) ? "ne" : "en";
   var T = lang === "ne" ? NE : EN;
@@ -67,32 +67,62 @@
   var KEY = user ? "kusbill:offlineQueue:" + user : null;
   try { var wd = JSON.parse(localStorage.getItem("kusbill:workDate") || "null"); if (wd) { $("date").value = wd.dateText || ""; if (wd.calendar) $("cal").value = wd.calendar; } } catch (e) {}
 
-  function load() { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { return []; } }
+  // ---- Encrypted storage: same format and device key as the app (AES-GCM, non-extractable key in IndexedDB) ----
+  var enc = new TextEncoder(), dec = new TextDecoder();
+  function b64(buf) { var b = new Uint8Array(buf), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+  function unb64(s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); }
+  function openDb() { return new Promise(function (res, rej) { var r = indexedDB.open("kusbill-secure", 1); r.onupgradeneeded = function () { r.result.createObjectStore("keys"); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }
+  function getKey() {
+    return openDb().then(function (db) {
+      return new Promise(function (res, rej) { var g = db.transaction("keys").objectStore("keys").get("offlineQueue"); g.onsuccess = function () { res(g.result); }; g.onerror = function () { rej(g.error); }; }).then(function (k) {
+        if (k) return k;
+        return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]).then(function (nk) {
+          return new Promise(function (res, rej) { var tx = db.transaction("keys", "readwrite"), st = tx.objectStore("keys"), g = st.get("offlineQueue"); g.onsuccess = function () { if (g.result) res(g.result); else { st.put(nk, "offlineQueue"); res(nk); } }; tx.onerror = function () { rej(tx.error); }; });
+        });
+      });
+    });
+  }
+  function load() {
+    var raw = localStorage.getItem(KEY); if (!raw) return Promise.resolve([]);
+    var parsed; try { parsed = JSON.parse(raw); } catch (e) { return Promise.resolve([]); }
+    if (Array.isArray(parsed)) return Promise.resolve(parsed); // legacy unencrypted queue (the app upgrades it)
+    return getKey().then(function (k) { return crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(parsed.iv) }, k, unb64(parsed.d)); }).then(function (p) { return JSON.parse(dec.decode(p)); }).catch(function () { return []; });
+  }
+  function save(items) {
+    return getKey().then(function (k) { var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, k, enc.encode(JSON.stringify(items))).then(function (d) { localStorage.setItem(KEY, JSON.stringify({ v: 2, iv: b64(iv), d: b64(d) })); }); });
+  }
+  function locked(fn) { return navigator.locks ? navigator.locks.request(KEY, fn) : fn(); }
   function render() {
-    var items = KEY ? load() : [];
-    $("count").textContent = items.filter(function (i) { return i.state === "pending"; }).length;
-    var ul = $("list"); ul.innerHTML = "";
-    items.slice(-8).forEach(function (i) { var li = document.createElement("li"); li.textContent = i.payload.dateText + " · " + (i.payload.billNumber || "-") + " · " + (i.payload.debit || i.payload.credit); ul.appendChild(li); });
+    if (!KEY) return;
+    load().then(function (items) {
+      $("count").textContent = items.filter(function (i) { return i.state === "pending"; }).length;
+      var ul = $("list"); ul.innerHTML = "";
+      items.slice(-8).forEach(function (i) { var li = document.createElement("li"); li.textContent = i.payload.dateText + " · " + (i.payload.billNumber || "-") + " · " + (i.payload.debit || i.payload.credit); ul.appendChild(li); });
+    });
   }
   function say(text, cls) { var m = $("msg"); m.textContent = text; m.className = "msg " + (cls || ""); }
   var AMT = /^\d{1,13}(\.\d{1,2})?$/;
   $("f").addEventListener("submit", function (e) {
     e.preventDefault();
     if (!KEY) return say(T.noUser, "err");
+    if (!(window.crypto && crypto.subtle && window.indexedDB)) return say(T.noCrypto, "err");
     var date = $("date").value.trim(), bill = $("bill").value.trim(), debit = $("debit").value.replace(/,/g, "").trim(), credit = $("credit").value.replace(/,/g, "").trim();
     if (!/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(date)) return say(T.needDate, "err");
     if (!bill) return say(T.needBill, "err");
     if ((debit && !AMT.test(debit)) || (credit && !AMT.test(credit))) return say(T.badAmt, "err");
     if ((!debit && !credit) || (debit && credit)) return say(T.needAmt, "err");
     var token = (crypto.randomUUID ? crypto.randomUUID() : "t-" + Date.now() + "-" + Math.random().toString(36).slice(2));
-    var items = load();
-    if (items.length >= 500) return say(T.full, "err");
-    items.push({ id: token, queuedAt: Date.now(), state: "pending", attempts: 0, payload: { dateText: date.replace(/[/.]/g, "-"), calendar: $("cal").value, billNumber: bill, debit: debit, credit: credit, description: $("desc").value.trim(), status: "POSTED", clientToken: token } });
-    try { localStorage.setItem(KEY, JSON.stringify(items)); localStorage.setItem("kusbill:workDate", JSON.stringify({ dateText: date, calendar: $("cal").value })); } catch (err) { return say(T.full, "err"); }
-    // Suggest the next bill number to keep typing quickly.
-    var m = /^(.*?)(\d+)$/.exec(bill); $("bill").value = m ? m[1] + String(parseInt(m[2], 10) + 1).padStart(m[2].length, "0") : "";
-    $("debit").value = ""; $("credit").value = ""; $("desc").value = "";
-    say(T.saved, "ok"); render(); $("bill").focus();
+    var cal = $("cal").value, desc = $("desc").value.trim();
+    locked(function () { return load().then(function (items) {
+      if (items.length >= 500) throw new Error("full");
+      items.push({ id: token, queuedAt: Date.now(), state: "pending", attempts: 0, payload: { dateText: date.replace(/[/.]/g, "-"), calendar: cal, billNumber: bill, debit: debit, credit: credit, description: desc, status: "POSTED", clientToken: token } });
+      return save(items);
+    }); }).then(function () {
+      try { localStorage.setItem("kusbill:workDate", JSON.stringify({ dateText: date, calendar: cal })); } catch (err) {}
+      var m = /^(.*?)(\d+)$/.exec(bill); $("bill").value = m ? m[1] + String(parseInt(m[2], 10) + 1).padStart(m[2].length, "0") : "";
+      $("debit").value = ""; $("credit").value = ""; $("desc").value = "";
+      say(T.saved, "ok"); render(); $("bill").focus();
+    }).catch(function () { say(T.full, "err"); });
   });
   $("retry").addEventListener("click", function () { location.href = "/dashboard"; });
   window.addEventListener("online", function () { location.href = "/dashboard"; });

@@ -7,6 +7,9 @@ import { cookieOptions, SESSION_COOKIE, signSession } from "@/lib/auth/session";
 import { hitRateLimit, resetRateLimit } from "@/lib/auth/rate-limit";
 import { z } from "zod";
 import { registerAccount, signupEnabled } from "@/lib/services/signup";
+import { requestPasswordReset, resetPasswordWithToken, sendVerificationEmail } from "@/lib/services/auth-tokens";
+import { mailConfigured, verificationRequired } from "@/lib/mail";
+import { getSessionUser } from "@/lib/auth/server";
 import { AppError } from "@/lib/errors";
 
 export type LoginState = { error?: string; email?: string } | undefined;
@@ -74,5 +77,61 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
     return { error: "Something went wrong. Please try again.", values };
   }
   (await cookies()).set(SESSION_COOKIE, await signSession(userId, version), cookieOptions());
+  if (verificationRequired()) {
+    try {
+      const u = await db.user.findUniqueOrThrow({ where: { id: userId } });
+      await sendVerificationEmail(u);
+    } catch (e) {
+      console.error("Could not send verification email", e); // the pending page offers "Resend"
+    }
+    redirect("/verify-email");
+  }
   redirect("/welcome");
+}
+
+const clientIp = async () => ((await headers()).get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+
+export type ForgotState = { done?: boolean; error?: string; email?: string } | undefined;
+
+export async function forgotPassword(_prev: ForgotState, formData: FormData): Promise<ForgotState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase().slice(0, 150);
+  if (!mailConfigured()) return { error: "Email is not set up on this server yet. Please ask the owner to reset your password.", email };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "Enter a valid email address", email };
+  const [byIp, byEmail] = await Promise.all([
+    hitRateLimit(`reset:ip:${await clientIp()}`, { max: 10, windowMs: 60 * 60_000 }),
+    hitRateLimit(`reset:email:${email}`, { max: 3, windowMs: 60 * 60_000 }),
+  ]);
+  if (!byIp.allowed || !byEmail.allowed) return { error: "Too many requests. Please wait a while and try again.", email };
+  try { await requestPasswordReset(email); } catch (e) { console.error("Password reset email failed", e); }
+  return { done: true, email }; // identical answer whether or not the address has an account
+}
+
+export type ResetState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
+
+export async function resetPassword(_prev: ResetState, formData: FormData): Promise<ResetState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  if (password !== String(formData.get("confirm") ?? "")) return { error: "The two passwords do not match.", fieldErrors: { confirm: "Passwords do not match" } };
+  const limit = await hitRateLimit(`resetuse:ip:${await clientIp()}`, { max: 20, windowMs: 60 * 60_000 });
+  if (!limit.allowed) return { error: "Too many requests. Please wait a while and try again." };
+  try {
+    await resetPasswordWithToken(token, password);
+  } catch (e) {
+    if (e instanceof AppError) return { error: e.message, fieldErrors: e.fieldErrors };
+    console.error("Password reset failed", e);
+    return { error: "Something went wrong. Please try again." };
+  }
+  redirect("/login?reset=1");
+}
+
+export async function resendVerification(): Promise<{ ok: boolean; error?: string }> {
+  const u = await getSessionUser();
+  if (!u) return { ok: false, error: "Please sign in first." };
+  if (u.emailVerified) return { ok: true };
+  const limit = await hitRateLimit(`verify:user:${u.id}`, { max: 5, windowMs: 60 * 60_000 });
+  if (!limit.allowed) return { ok: false, error: "Too many emails sent. Please wait a while and try again." };
+  try { await sendVerificationEmail({ id: u.id, email: u.email, name: u.name }); return { ok: true }; } catch (e) {
+    console.error("Could not send verification email", e);
+    return { ok: false, error: "We could not send the email. Please try again later." };
+  }
 }

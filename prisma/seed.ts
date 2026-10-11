@@ -24,7 +24,7 @@ async function main() {
   if (!user || !business) {
     business = await db.business.create({ data: { name: "My Business" } });
     user = await db.user.create({
-      data: { businessId: business.id, email, name: "Owner", role: "OWNER", passwordHash: await bcrypt.hash(password, 12) },
+      data: { businessId: business.id, email, name: "Owner", role: "OWNER", passwordHash: await bcrypt.hash(password, 12), emailVerifiedAt: new Date() },
     });
     console.log(`Created owner ${email}`);
   } else {

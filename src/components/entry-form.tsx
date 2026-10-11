@@ -83,7 +83,7 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
             if (!isNetworkError(e)) throw e;
             if (mode === "edit") { setFormError(t("You are offline")); toast.error(t("You are offline")); return; }
             // No internet: keep the entry on this device. It carries its idempotency token, so syncing can never duplicate it.
-            if (!offline.enqueue({ ...payload, calendar: values.calendar, status })) { toast.error(t("This device has no room left.")); return; }
+            if (!(await offline.enqueue({ ...payload, calendar: values.calendar, status }))) { toast.error(t("This device has no room left.")); return; }
             try { localStorage.setItem(WORK_DATE_KEY, JSON.stringify({ dateText: values.dateText, calendar: values.calendar })); } catch { /* ignore */ }
             toast.success(t("Saved on this device - will sync when online"));
             setLastSaved(`${t("Saved on this device - will sync when online")}: ${t("Bill Number")} ${values.billNumber}`);

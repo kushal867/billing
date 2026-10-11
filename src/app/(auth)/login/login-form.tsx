@@ -1,5 +1,6 @@
 "use client";
 import { useActionState } from "react";
+import Link from "next/link";
 import { login } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function LoginForm({ next }: { next?: string }) {
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </Field>
       <Button type="submit" className="w-full" size="lg" loading={pending}>{t("Sign in")}</Button>
+      <p className="text-center text-sm"><Link href="/forgot-password" className="text-primary hover:underline">{t("Forgot your password?")}</Link></p>
     </form>
   );
 }

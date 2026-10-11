@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { LanguageToggle } from "@/components/language-toggle";
 import { AlertsBell } from "@/components/alerts-bell";
-import { OfflineProvider } from "@/components/offline-provider";
+import { OfflineBanner, OfflineProvider, useOffline } from "@/components/offline-provider";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -44,6 +44,20 @@ function NavLinks({ onNavigate, canWrite }: { onNavigate?: () => void; canWrite:
   );
 }
 
+function AccountBox({ user }: { user: { name: string; role: string } }) {
+  const t = useT();
+  const offline = useOffline();
+  return (
+    <div className="space-y-2 border-t border-white/10 pt-3 text-sm text-slate-300">
+      <p className="truncate px-1">{user.name} <span className="text-xs text-slate-400">({t(user.role === "OWNER" ? "Owner" : user.role === "ACCOUNTANT" ? "Accountant" : "Viewer")})</span></p>
+      <LanguageToggle dark className="w-full justify-center" />
+      <form action={logout} onSubmit={(e) => { if (offline.pending > 0 && !window.confirm(t("{n} entries are still waiting to be sent. They stay encrypted on this device and are sent the next time you sign in here. Sign out anyway?", { n: offline.pending }))) e.preventDefault(); }}>
+        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 hover:bg-white/10" type="submit"><LogOut className="h-4 w-4" aria-hidden /> {t("Sign out")}</button>
+      </form>
+    </div>
+  );
+}
+
 function Brand() {
   return (
     <Link href="/dashboard" className="flex items-center gap-2 px-1">
@@ -59,17 +73,10 @@ export function AppShell({ user, businessName, canWrite, children }: { user: { i
   const t = useT();
   useEffect(() => setOpen(false), [path]);
 
-  const account = (
-    <div className="space-y-2 border-t border-white/10 pt-3 text-sm text-slate-300">
-      <p className="truncate px-1">{user.name} <span className="text-xs text-slate-400">({t(user.role === "OWNER" ? "Owner" : user.role === "ACCOUNTANT" ? "Accountant" : "Viewer")})</span></p>
-      <LanguageToggle dark className="w-full justify-center" />
-      <form action={logout}>
-        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 hover:bg-white/10" type="submit"><LogOut className="h-4 w-4" aria-hidden /> {t("Sign out")}</button>
-      </form>
-    </div>
-  );
+  const account = <AccountBox user={user} />;
 
   return (
+    <OfflineProvider userId={user.id}>
     <div className="min-h-screen lg:flex">
       <aside className="no-print hidden w-60 shrink-0 flex-col justify-between bg-navy p-4 lg:flex lg:sticky lg:top-0 lg:h-screen">
         <div className="space-y-6"><Brand /><NavLinks canWrite={canWrite} /></div>
@@ -103,10 +110,10 @@ export function AppShell({ user, businessName, canWrite, children }: { user: { i
           </div>
         )}
 
-        <OfflineProvider userId={user.id}>
-          <main className="mx-auto w-full max-w-7xl px-4 py-5 lg:px-8 lg:py-6">{children}</main>
-        </OfflineProvider>
+        <OfflineBanner />
+        <main className="mx-auto w-full max-w-7xl px-4 py-5 lg:px-8 lg:py-6">{children}</main>
       </div>
     </div>
+    </OfflineProvider>
   );
 }

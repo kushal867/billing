@@ -21,6 +21,8 @@ export async function middleware(req: NextRequest) {
     if (session) return redirectTo(req, "/dashboard");
     return NextResponse.next();
   }
+  // Reachable signed in or out: emailed links open here.
+  if (pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email") return NextResponse.next();
   if (!session) {
     if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     return redirectTo(req, pathname !== "/" ? `/login?next=${encodeURIComponent(pathname)}` : "/login");

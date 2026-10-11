@@ -111,7 +111,7 @@ export function BulkGrid({ calendar, nextBill }: { calendar: Calendar; nextBill:
       // Offline: keep every typed row on this device, in order. Each is validated by the server when it syncs.
       const toQueue = rows.filter((x) => x.bill || x.debit || x.credit || x.description);
       let ok = true;
-      for (const x of toQueue) ok = offline.enqueue({ dateText: x.date.trim() || pageDate, calendar: cal, billNumber: x.bill, debit: x.debit, credit: x.credit, description: x.description, status: "POSTED" }) && ok;
+      for (const x of toQueue) ok = (await offline.enqueue({ dateText: x.date.trim() || pageDate, calendar: cal, billNumber: x.bill, debit: x.debit, credit: x.credit, description: x.description, status: "POSTED" })) && ok;
       if (!ok) { toast.error(t("This device has no room left.")); return; }
       try { localStorage.removeItem(STORE); } catch { /* ignore */ }
       setRows(Array.from({ length: 20 }, blank)); setResults({});

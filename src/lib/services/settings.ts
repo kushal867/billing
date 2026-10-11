@@ -75,7 +75,7 @@ export async function createUser(ctx: Ctx, input: { name: string; email: string;
   if (problem) throw validation(problem, { password: problem });
   if (await db.user.findUnique({ where: { email } })) throw conflict("A user with that email already exists");
   const user = await db.user.create({
-    data: { businessId: ctx.businessId, email, name: input.name.trim(), role: input.role, passwordHash: await hashPassword(input.password) },
+    data: { businessId: ctx.businessId, email, name: input.name.trim(), role: input.role, passwordHash: await hashPassword(input.password), emailVerifiedAt: new Date() /* the owner vouches for people they add */ },
     select: { id: true, email: true, role: true, name: true },
   });
   await audit(db, ctx, { action: "CREATE", entityType: "User", entityId: user.id, after: user });
