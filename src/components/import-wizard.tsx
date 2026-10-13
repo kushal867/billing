@@ -90,10 +90,11 @@ export function ImportWizard({ defaultCalendar, grouping }: { defaultCalendar: C
     return (
       <form onSubmit={upload} className="space-y-4">
         {error && <Alert tone="error">{error}</Alert>}
-        <Field label="Choose a file" htmlFor="file" hint="CSV or Excel (.xlsx) are imported. A PDF is only saved for reference. Up to 5,000 rows.">
+        <Field label="Choose a file" htmlFor="file" hint="Excel (.xlsx), CSV, or a PDF with typed text (not a photo or scan) can be imported, then you carry on adding entries as usual. Up to 5,000 rows.">
           <input id="file" name="file" type="file" accept=".csv,.xlsx,.pdf,.txt" required className="block w-full rounded-md border bg-white p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white" />
         </Field>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="hasHeader" value="true" defaultChecked /> The first row contains column names</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="referenceOnly" value="true" /> PDF only: just keep it for reference, do not read entries from it</label>
         <Button type="submit" loading={pending}><FileUp className="h-4 w-4" aria-hidden /> Upload and continue</Button>
       </form>
     );

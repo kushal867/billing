@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { pdfToRows } from "@/lib/importers/pdf-table";
 import ExcelJS from "exceljs";
 import { db } from "@/lib/db";
 import type { Ctx } from "@/lib/auth/context";
@@ -14,7 +15,7 @@ export const MAX_IMPORT_ROWS = 5000;
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export type ParsedTable = {
-  kind: "CSV" | "XLSX";
+  kind: "CSV" | "XLSX" | "PDF";
   headers: string[];
   /** Data rows; `rowNumbers[i]` is the 1-based row number in the original file. */
   rows: string[][];
@@ -65,7 +66,7 @@ export async function parseTable(filename: string, buf: Buffer, hasHeader = true
   if (buf.length > MAX_FILE_BYTES) throw validation("File is larger than 5 MB");
   const lower = filename.toLowerCase();
   let all: { cells: string[]; n: number }[] = [];
-  let kind: "CSV" | "XLSX";
+  let kind: "CSV" | "XLSX" | "PDF";
   if (lower.endsWith(".xlsx")) {
     kind = "XLSX";
     const wb = new ExcelJS.Workbook();
@@ -87,8 +88,18 @@ export async function parseTable(filename: string, buf: Buffer, hasHeader = true
     const text = buf.toString("utf8").replace(/^﻿/, "");
     const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false });
     all = parsed.data.map((cells, i) => ({ cells: cells.map((c) => (c ?? "").trim()), n: i + 1 }));
+  } else if (lower.endsWith(".pdf")) {
+    kind = "PDF";
+    let rows: string[][];
+    try {
+      rows = await pdfToRows(buf);
+    } catch (e) {
+      throw validation(e instanceof Error ? e.message : "This PDF could not be read");
+    }
+    if (!rows.length) throw validation("No table of text was found in this PDF. Scanned or photographed pages cannot be read - use the Excel template instead.");
+    all = rows.map((cells, i) => ({ cells, n: i + 1 }));
   } else {
-    throw validation("Upload a .csv or .xlsx file (use the PDF option to keep a PDF for reference)");
+    throw validation("Upload a .csv, .xlsx or .pdf file");
   }
   all = all.filter((r) => r.cells.some((c) => c !== ""));
   if (!all.length) throw validation("The file is empty");
@@ -203,7 +214,7 @@ export type ImportSummary = { jobId: string; total: number; imported: number; sk
 
 export async function commitImport(
   ctx: Ctx,
-  input: { filename: string; kind: "CSV" | "XLSX" | "BULK"; table: Pick<ParsedTable, "rows" | "rowNumbers">; options: ImportOptions; includeDuplicates: boolean; /** Refuse (and save nothing) if any row fails validation. */ strict?: boolean },
+  input: { filename: string; kind: "CSV" | "XLSX" | "PDF" | "BULK"; table: Pick<ParsedTable, "rows" | "rowNumbers">; options: ImportOptions; includeDuplicates: boolean; /** Refuse (and save nothing) if any row fails validation. */ strict?: boolean },
 ): Promise<ImportSummary> {
   assertWrite(ctx);
   return withBusinessLock(

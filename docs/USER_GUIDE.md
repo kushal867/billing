@@ -229,7 +229,7 @@ To bring in past records, put them in a spreadsheet and use **Imports**.
 5. Fix problems in your file and upload again, or import only the good rows. Rows with errors are never imported. Rows already in the system are skipped as duplicates by default.
 6. Press **Import**. A summary shows how many rows were imported, skipped and failed, and is kept in **Import history**.
 
-> **PDF files:** you may upload a PDF as a *reference copy*, but KusBill does **not** read it or import from it, because a misread date or amount would silently damage your books. It tells you so clearly. Type the entries in (use [Bulk Entry](#6-bulk-entry-a-whole-page-at-once)) or convert the PDF to Excel first.
+> **PDF files:** a PDF with *typed* text (for example one saved from another program or exported from Excel) is read just like an Excel file: KusBill rebuilds the columns, you match them, and you see a preview with every problem flagged before anything is saved. After importing, you simply keep adding new entries and the running balance continues from the last imported row. A **photo or scan** of a paper page has no text to read and is refused with a clear message - use Bulk Entry or an Excel file for those. Tick *"PDF only: just keep it for reference"* if you only want to store the file.
 
 ---
 

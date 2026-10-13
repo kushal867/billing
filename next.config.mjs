@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["pdfkit", "exceljs", "@prisma/client", "bcryptjs"],
-  outputFileTracingIncludes: { "/api/export": ["./node_modules/pdfkit/js/data/**/*", "./src/lib/exporters/fonts/**/*"] },
+  serverExternalPackages: ["pdfkit", "exceljs", "@prisma/client", "bcryptjs", "pdfjs-dist"],
+  outputFileTracingIncludes: { "/**": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"], "/api/export": ["./node_modules/pdfkit/js/data/**/*", "./src/lib/exporters/fonts/**/*"] },
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
   async headers() {
     return [

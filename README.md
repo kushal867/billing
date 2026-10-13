@@ -93,7 +93,7 @@ The billpad ledger and the accounting ledger are kept separate:
 
 **Imports** accepts CSV and Excel (.xlsx). Flow: upload → map columns (auto-suggested) → choose whether text dates are BS or AD → **check** (nothing is saved) → review per-row results with row numbers → import. The server re-validates inside the import transaction; rows with errors are never imported, exact duplicates are skipped by default, and the summary reports imported / skipped / failed. Excel date cells are read as unambiguous AD; text dates use your calendar choice and suspicious combinations are flagged.
 
-PDFs can be uploaded **for reference only**. KusBill does not OCR or read them, and says so — a misread date or amount would silently corrupt a ledger.
+PDFs with typed text are read into the same column-mapping and preview step as Excel/CSV (`pdfjs-dist`; table rebuilt from text positions), so nothing is saved until the user has reviewed it. Scanned or photographed PDFs are not OCR’d and are refused with a clear message; a PDF can also be stored for reference only.
 
 ---
 
@@ -219,5 +219,5 @@ Before releasing: `npm run lint && npm run typecheck && npm test && npm run buil
 - **Self-service sign-up creates a separate business per account.** Data is isolated per business (tested), but there is **no email verification or password-reset email yet**; sign-up is rate limited to 5 per hour per IP. Set `ALLOW_SIGNUP=false` to turn the public sign-up page off.
 - **PDF export uses the embedded Noto Sans Devanagari font**, which covers Latin and Devanagari. Other scripts are not supported in PDFs.
 - **BS conversion covers 2000–2090.** Dates outside this range are rejected for BS entry (AD entry always works).
-- **PDFs are stored for reference, not OCR’d** (by design, see Imports).
+- **Scanned/photographed PDFs are not OCR’d** (typed-text PDFs are imported; see Imports).
 - Balances are derived on read with a SQL window function; this is comfortably fast for tens of thousands of entries. For millions of rows a materialised running balance would be the next step.

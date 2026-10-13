@@ -8,7 +8,7 @@ import { validation } from "@/lib/errors";
 import { commitImport, parseTable, storePdfReference, suggestMapping, validateRows, MAX_IMPORT_ROWS, type Mapping, type RowResult } from "@/lib/services/imports";
 
 export type UploadOutcome =
-  | { kind: "table"; filename: string; fileKind: "CSV" | "XLSX"; headers: string[]; rows: string[][]; rowNumbers: number[]; mapping: Mapping }
+  | { kind: "table"; filename: string; fileKind: "CSV" | "XLSX" | "PDF"; headers: string[]; rows: string[][]; rowNumbers: number[]; mapping: Mapping }
   | { kind: "pdf"; jobId: string; filename: string };
 
 export async function uploadImportFile(formData: FormData) {
@@ -19,12 +19,12 @@ export async function uploadImportFile(formData: FormData) {
     if (!(file instanceof File) || file.size === 0) throw validation("Choose a file to upload");
     const buf = Buffer.from(await file.arrayBuffer());
     const name = file.name || "upload";
-    if (name.toLowerCase().endsWith(".pdf")) {
+    if (name.toLowerCase().endsWith(".pdf") && formData.get("referenceOnly") === "true") {
       const job = await storePdfReference(ctx, name, buf);
       revalidatePath("/imports");
       return { kind: "pdf", jobId: job.id, filename: job.filename };
     }
-    const table = await parseTable(name, buf, formData.get("hasHeader") !== "false");
+    const table = await parseTable(name, buf, formData.get("hasHeader") === "true");
     return { kind: "table", filename: name, fileKind: table.kind, headers: table.headers, rows: table.rows, rowNumbers: table.rowNumbers, mapping: suggestMapping(table.headers) };
   });
 }
@@ -50,7 +50,7 @@ export async function previewImport(input: unknown) {
 export async function runImport(input: unknown) {
   return run(async () => {
     const ctx = await requireCtx();
-    const v = payload.extend({ filename: z.string().max(200), fileKind: z.enum(["CSV", "XLSX"]), includeDuplicates: z.boolean() }).parse(input);
+    const v = payload.extend({ filename: z.string().max(200), fileKind: z.enum(["CSV", "XLSX", "PDF"]), includeDuplicates: z.boolean() }).parse(input);
     const summary = await commitImport(ctx, { filename: v.filename, kind: v.fileKind, table: v, options: { mapping: v.mapping, calendar: v.calendar }, includeDuplicates: v.includeDuplicates });
     for (const p of ["/imports", "/ledger", "/dashboard"]) revalidatePath(p);
     return summary;
