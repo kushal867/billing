@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BookOpen, FileBarChart, Landmark, LayoutDashboard, LogOut, Menu, PlusCircle, Settings, Upload, X } from "lucide-react";
+import { BookOpen, FileBarChart, Landmark, LayoutDashboard, LogOut, Menu, PlusCircle, Settings, Upload, Users, X } from "lucide-react";
 import { logout } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/entries/new", label: "Add Entry", icon: PlusCircle },
   { href: "/ledger", label: "Ledger", icon: BookOpen },
+  { href: "/parties", label: "Parties", icon: Users },
   { href: "/reports", label: "Reports", icon: FileBarChart },
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/imports", label: "Imports", icon: Upload },

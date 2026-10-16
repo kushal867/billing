@@ -19,7 +19,7 @@ import { incrementBill, isNetworkError } from "@/lib/offline-queue";
 
 export type TableRow = {
   id: string; version: number; date: string; billNumber: string; debit: string; credit: string; balance: string | null;
-  description: string; categoryId: string | null; categoryName: string | null; status: "DRAFT" | "POSTED" | "VOID";
+  description: string; categoryId: string | null; categoryName: string | null; partyId?: string | null; partyName?: string | null; status: "DRAFT" | "POSTED" | "VOID";
   createdByName: string | null; updatedByName: string | null; updatedAt: string;
   flags: { duplicateBill: boolean; large: boolean; future: boolean; reversal: boolean };
 };
@@ -163,6 +163,7 @@ export function LedgerTable({
                 {cell(r, "bill", r.billNumber || "-", "whitespace-nowrap font-medium num")}
                 {show("description") && (
                   <td className="max-w-[22rem]" data-col={editable(r) ? undefined : "description"}>
+                    {r.partyId && r.partyName && <Link href={`/parties/${r.partyId}`} className="mb-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-200 print:bg-transparent print:p-0">{r.partyName}</Link>}
                     {editing?.id === r.id && editing.field === "description" ? (
                       <Input autoFocus disabled={saving} aria-label="Edit description" className="h-9" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => { if (!saving) cancel(); }}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void commit(r, "description", draft); } if (e.key === "Escape") cancel(); }} />

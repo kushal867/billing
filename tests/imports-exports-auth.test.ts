@@ -84,7 +84,7 @@ describe("CSV import", () => {
   it("requires the essential columns to be mapped and rejects unsupported files", async () => {
     const table = await parseTable("x.csv", csv("a,b\n1,2"));
     await expect(validateRows(ctx, table, { mapping: { date: -1, billNumber: 0, debit: 1, credit: -1, description: -1 }, calendar: "AD" })).rejects.toThrow(/Date and Bill/);
-    await expect(parseTable("x.exe", csv("zzz"))).rejects.toThrow(/\.csv or \.xlsx/);
+    await expect(parseTable("x.exe", csv("zzz"))).rejects.toThrow(/\.csv, \.xlsx or \.pdf/);
     await expect(parseTable("x.csv", csv("\n\n"))).rejects.toThrow(/empty/);
   });
 

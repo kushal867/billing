@@ -16,6 +16,7 @@ export const entrySchema = z.object({
   credit: z.string().trim().default(""),
   description: z.string().trim().max(500, "Keep notes under 500 characters").default(""),
   categoryId: optionalId,
+  partyName: z.string().max(100, "Keep the name under 100 characters").optional(),
   status: z.enum(["POSTED", "DRAFT"]).default("POSTED"),
   clientToken: z.string().max(100).optional(),
   allowDuplicate: z.boolean().optional(),
@@ -31,6 +32,7 @@ export type ParsedEntry = {
   credit: Decimal;
   description: string;
   categoryId?: string;
+  partyName?: string;
   status: "POSTED" | "DRAFT";
   clientToken?: string;
   allowDuplicate: boolean;
@@ -71,6 +73,7 @@ export function parseEntry(raw: unknown): { ok: true; value: ParsedEntry } | { o
       credit: credit!,
       description: v.description,
       categoryId: v.categoryId,
+      partyName: v.partyName === undefined ? undefined : v.partyName.replace(/\s+/g, " ").trim(), // undefined = leave unchanged, "" = no party
       status: v.status,
       clientToken: v.clientToken,
       allowDuplicate: v.allowDuplicate ?? false,

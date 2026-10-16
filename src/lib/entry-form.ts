@@ -8,6 +8,7 @@ export type EntryFormValues = {
   credit: string;
   description: string;
   categoryId: string;
+  partyName?: string;
 };
 
 const AMOUNT = /^\d{1,13}(\.\d{1,2})?$/;

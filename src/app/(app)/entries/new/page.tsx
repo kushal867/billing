@@ -6,6 +6,7 @@ import { canWrite } from "@/lib/auth/context";
 import { db } from "@/lib/db";
 import { getBusiness, getAnchor } from "@/lib/services/periods";
 import { listLedger, summarizePeriod } from "@/lib/services/ledger";
+import { partyNames } from "@/lib/services/parties";
 import { suggestNextBillNumber } from "@/lib/services/transactions";
 import { formatDate } from "@/lib/dates";
 import { EntryForm } from "@/components/entry-form";
@@ -25,12 +26,13 @@ export default async function NewEntryPage() {
   const { t } = await getT();
   if (!canWrite(ctx.role)) redirect("/ledger");
   const biz = await getBusiness(ctx.businessId);
-  const [categories, nextBill, recent, anchor, fy] = await Promise.all([
+  const [categories, nextBill, recent, anchor, fy, parties] = await Promise.all([
     db.category.findMany({ where: { businessId: ctx.businessId, isActive: true }, orderBy: [{ kind: "asc" }, { name: "asc" }], select: { id: true, name: true, kind: true } }),
     suggestNextBillNumber(ctx),
     listLedger(ctx, { sort: "date", dir: "desc", pageSize: 8 }),
     getAnchor(db, ctx.businessId),
     db.financialYear.count({ where: { businessId: ctx.businessId } }),
+    partyNames(ctx),
   ]);
   const summary = await summarizePeriod(ctx, "1900-01-01", "2999-12-31");
   const cal = biz.displayCalendar;
@@ -48,7 +50,7 @@ export default async function NewEntryPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <CardContent className="p-5">
-            <EntryForm mode="create" calendar={cal} grouping={g} symbol={biz.currencySymbol} categories={categories} nextBill={nextBill} />
+            <EntryForm mode="create" calendar={cal} grouping={g} symbol={biz.currencySymbol} categories={categories} parties={parties} nextBill={nextBill} />
           </CardContent>
         </Card>
         <div className="space-y-4">
@@ -68,7 +70,7 @@ export default async function NewEntryPage() {
                     <li key={r.id} className="flex items-center justify-between gap-3 py-2">
                       <div className="min-w-0">
                         <Link href={`/entries/${r.id}`} className="font-medium text-primary hover:underline">{t("Bill Number")} {r.billNumber}</Link>
-                        <p className="truncate text-xs text-muted-foreground">{formatDate(r.date, cal)}{r.description ? ` - ${r.description}` : ""}</p>
+                        <p className="truncate text-xs text-muted-foreground">{formatDate(r.date, cal)}{r.partyName ? ` - ${r.partyName}` : ""}{r.description ? ` - ${r.description}` : ""}</p>
                       </div>
                       <div className="text-right">
                         <Amt v={(r.debit.isZero() ? r.credit : r.debit).toFixed(2)} grouping={g} />

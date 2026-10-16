@@ -116,7 +116,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
             <LedgerTable
               rows={data.rows.map((r) => ({
                 id: r.id, version: r.version, date: r.date, billNumber: r.billNumber, debit: r.debit.toFixed(2), credit: r.credit.toFixed(2), balance: r.balance ? r.balance.toFixed(2) : null,
-                description: r.description, categoryId: r.categoryId, categoryName: r.categoryName, status: r.status, createdByName: r.createdByName, updatedByName: r.updatedByName,
+                description: r.description, categoryId: r.categoryId, categoryName: r.categoryName, partyId: r.partyId, partyName: r.partyName, status: r.status, createdByName: r.createdByName, updatedByName: r.updatedByName,
                 updatedAt: r.updatedAt.toISOString(), flags: r.flags,
               }))}
               calendar={cal} grouping={g} canWrite={write} categories={categories} nextBill={nextBill} sort={sort} dir={dir}

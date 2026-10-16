@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireCtx } from "@/lib/auth/server";
@@ -7,6 +8,7 @@ import { getBusiness } from "@/lib/services/periods";
 import { getAuditTrail, getTransaction } from "@/lib/services/transactions";
 import { AppError } from "@/lib/errors";
 import { formatDate, toIso } from "@/lib/dates";
+import { partyNames } from "@/lib/services/parties";
 import { EntryForm } from "@/components/entry-form";
 import { EntryActions } from "@/components/entry-actions";
 import { PageHeader } from "@/components/ui/states";
@@ -58,13 +60,13 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
           <CardContent className="p-5">
             {editable ? (
               <EntryForm
-                mode="edit" calendar={cal} grouping={g} symbol={biz.currencySymbol} categories={categories}
+                mode="edit" calendar={cal} grouping={g} symbol={biz.currencySymbol} categories={categories} parties={await partyNames(ctx)}
                 edit={{
                   id: t.id, version: t.version, status: t.status === "DRAFT" ? "DRAFT" : "POSTED",
                   initial: {
                     dateText, calendar: t.enteredCalendar === "BS" ? "BS" : cal, billNumber: t.billNumber,
                     debit: t.debitAmount.isZero() ? "" : t.debitAmount.toFixed(2), credit: t.creditAmount.isZero() ? "" : t.creditAmount.toFixed(2),
-                    description: t.description, categoryId: t.categoryId ?? "",
+                    description: t.description, categoryId: t.categoryId ?? "", partyName: t.party?.name ?? "",
                   },
                 }}
               />
@@ -74,6 +76,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
                 <div><dt className="text-muted-foreground">{tr("Bill Number")}</dt><dd className="font-medium">{t.billNumber}</dd></div>
                 <div><dt className="text-muted-foreground">{tr("Debit")}</dt><dd><Amt v={t.debitAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
                 <div><dt className="text-muted-foreground">{tr("Credit")}</dt><dd><Amt v={t.creditAmount.toFixed(2)} grouping={g} blankZero /></dd></div>
+                <div className="sm:col-span-2"><dt className="text-muted-foreground">{tr("Party (customer or supplier)")}</dt><dd>{t.party ? <Link className="text-primary hover:underline" href={`/parties/${t.party.id}`}>{t.party.name}</Link> : "-"}</dd></div>
                 <div className="sm:col-span-2"><dt className="text-muted-foreground">{tr("Description / Notes")}</dt><dd>{t.description || "-"}</dd></div>
               </dl>
             )}

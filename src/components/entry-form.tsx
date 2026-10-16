@@ -26,13 +26,14 @@ type Props = {
   grouping: Grouping;
   symbol: string;
   categories: Array<{ id: string; name: string; kind: string }>;
+  parties?: string[];
   nextBill?: string;
   edit?: { id: string; version: number; status: "POSTED" | "DRAFT"; initial: EntryFormValues };
 };
 
 const WORK_DATE_KEY = "kusbill:workDate";
 
-export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBill = "", edit }: Props) {
+export function EntryForm({ mode, calendar, grouping, symbol, categories, parties = [], nextBill = "", edit }: Props) {
   const router = useRouter();
   const t = useT();
   const offline = useOffline();
@@ -44,7 +45,7 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
   const submitMode = useRef<"POSTED" | "DRAFT">("POSTED");
 
   const defaults: EntryFormValues = edit?.initial ?? {
-    dateText: formatDate(todayIso(), calendar), calendar, billNumber: nextBill, debit: "", credit: "", description: "", categoryId: "",
+    dateText: formatDate(todayIso(), calendar), calendar, billNumber: nextBill, debit: "", credit: "", description: "", categoryId: "", partyName: "",
   };
   const { register, control, handleSubmit, setError, setValue, setFocus, reset, getValues, clearErrors, formState: { errors } } = useForm<EntryFormValues>({
     defaultValues: defaults,
@@ -88,7 +89,7 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
             toast.success(t("Saved on this device - will sync when online"));
             setLastSaved(`${t("Saved on this device - will sync when online")}: ${t("Bill Number")} ${values.billNumber}`);
             tokenRef.current = crypto.randomUUID();
-            reset({ ...values, billNumber: incrementBill(values.billNumber), debit: "", credit: "", description: "", categoryId: "" });
+            reset({ ...values, billNumber: incrementBill(values.billNumber), debit: "", credit: "", description: "", categoryId: "", partyName: "" });
             setFocus("billNumber");
             return;
           }
@@ -116,7 +117,7 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
           setLastSaved(`${status === "DRAFT" ? t("Draft saved") : t("Saved")}: ${t("Bill Number")} ${out.billNumber || "-"} - ${amt}`);
           toast.success(status === "DRAFT" ? t("Draft saved") : `${t("Entry saved")} - ${t("Bill Number")} ${out.billNumber}`);
           tokenRef.current = crypto.randomUUID();
-          reset({ ...values, billNumber: out.nextBill, debit: "", credit: "", description: "", categoryId: "" });
+          reset({ ...values, billNumber: out.nextBill, debit: "", credit: "", description: "", categoryId: "", partyName: "" });
           router.refresh();
           setFocus("billNumber");
         });
@@ -175,6 +176,11 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
           <Controller control={control} name="credit" render={({ field }) => <CurrencyInput id="credit" symbol={symbol} value={field.value} onValueChange={(v) => { field.onChange(v); clearErrors(["debit", "credit"]); }} invalid={!!e.credit} />} />
         </Field>
 
+        <Field label={t("Party (customer or supplier)")} htmlFor="partyName" error={e.partyName?.message && t(e.partyName.message)} hint={t("Optional. Pick a name from the list, or type a new one to add it.")} className="sm:col-span-2">
+          <Input id="partyName" list="party-names" maxLength={100} autoComplete="off" {...register("partyName")} invalid={!!e.partyName} placeholder={t("e.g. Ram Traders")} />
+          <datalist id="party-names">{parties.map((n) => <option key={n} value={n} />)}</datalist>
+        </Field>
+
         <Field label={t("Description / Notes")} htmlFor="description" error={e.description?.message && t(e.description.message)} className="sm:col-span-2">
           <Input id="description" maxLength={500} autoComplete="off" {...register("description")} invalid={!!e.description} placeholder={t("Optional - e.g. customer or item name")} />
         </Field>
@@ -196,7 +202,7 @@ export function EntryForm({ mode, calendar, grouping, symbol, categories, nextBi
           <Button type="button" variant="outline" size="lg" disabled={pending} onClick={() => { submitMode.current = "DRAFT"; void submit("DRAFT")(); }}>{t("Save as Draft")}</Button>
         )}
         {mode === "edit" ? <Button asChild variant="ghost" size="lg"><Link href="/ledger">{t("Cancel")}</Link></Button> : (
-          <Button type="button" variant="ghost" size="lg" onClick={() => { reset({ ...getValues(), billNumber: nextBill, debit: "", credit: "", description: "", categoryId: "" }); setFormError(""); setDups(null); setFocus("billNumber"); }}>{t("Clear")}</Button>
+          <Button type="button" variant="ghost" size="lg" onClick={() => { reset({ ...getValues(), billNumber: nextBill, debit: "", credit: "", description: "", categoryId: "", partyName: "" }); setFormError(""); setDups(null); setFocus("billNumber"); }}>{t("Clear")}</Button>
         )}
       </div>
     </form>

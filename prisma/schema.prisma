@@ -98,6 +98,7 @@ model Business {
   openingBalances OpeningBalance[]
   transactions    Transaction[]
   categories      Category[]
+  parties         Party[]
   accounts        Account[]
   journalEntries  JournalEntry[]
   auditLogs       AuditLog[]
@@ -245,6 +246,7 @@ model Transaction {
   reversalOfId    String?           @db.Uuid
   voidReason      String?
   importJobId     String?           @db.Uuid
+  partyId         String?           @db.Uuid
   createdBy       String            @db.Uuid
   updatedBy       String?           @db.Uuid
   createdAt       DateTime          @default(now())
@@ -252,6 +254,7 @@ model Transaction {
 
   business     Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
   category     Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  party        Party?         @relation(fields: [partyId], references: [id], onDelete: SetNull)
   journalEntry JournalEntry[]
 
   @@unique([businessId, clientToken])
@@ -260,6 +263,7 @@ model Transaction {
   @@index([businessId, status])
   @@index([businessId, categoryId])
   @@index([importJobId])
+  @@index([businessId, partyId])
 }
 
 model JournalEntry {
@@ -341,4 +345,30 @@ model RateLimit {
   count       Int      @default(0)
   windowStart DateTime @default(now())
   lockedUntil DateTime?
+}
+
+enum PartyKind {
+  CUSTOMER
+  SUPPLIER
+}
+
+/// A customer or supplier with their own ledger. Entries link to a party optionally.
+model Party {
+  id         String    @id @default(uuid()) @db.Uuid
+  businessId String    @db.Uuid
+  name       String
+  kind       PartyKind @default(CUSTOMER)
+  phone      String    @default("")
+  address    String    @default("")
+  notes      String    @default("")
+  /// Balance brought forward for this party as net debit (positive = they owe the business, negative = the business owes them).
+  openingNet Decimal   @default(0) @db.Decimal(16, 2)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([businessId, isActive])
 }

@@ -7,6 +7,7 @@ import { addDays, formatDate, fromIso, monthBucket, toIso, todayIso, type Calend
 import { applyConvention, dailyAggregates, listLedger, openingBalanceFor, summarizePeriod, type LedgerFilters } from "./ledger";
 import { accountTotals } from "./accounting";
 import { getBusiness } from "./periods";
+import { getParty, listParties, totalsOf } from "./parties";
 import type { ReportDoc, Section } from "./report-doc";
 
 export const conventionText = (c: Business["balanceConvention"]) =>
@@ -460,5 +461,87 @@ export async function buildTrialBalance(ctx: Pick<Ctx, "businessId">, asOf: stri
   doc.meta.push(["Total Debit", m(dr)], ["Total Credit", m(cr)], ["Imbalance", m(diff)]);
   if (!diff.isZero()) doc.warnings.push(`The trial balance is out by ${m(diff.abs())}.`);
   else doc.notes.push("Total debits equal total credits.");
+  return doc;
+}
+
+// ---------------------------------------------------------------------------
+// Party statement and outstanding list
+// ---------------------------------------------------------------------------
+export async function buildPartyStatementReport(ctx: Pick<Ctx, "businessId">, partyId: string, from: string, to: string): Promise<ReportDoc> {
+  checkRange(from, to);
+  const biz = await getBusiness(ctx.businessId);
+  const cal = biz.displayCalendar;
+  const party = await getParty(ctx, partyId);
+  const sign = D(biz.balanceConvention === "DEBIT_PLUS" ? 1 : -1);
+  const all = await db.transaction.findMany({
+    where: { businessId: ctx.businessId, partyId, status: "POSTED" },
+    orderBy: [{ transactionDate: "asc" }, { seq: "asc" }],
+  });
+  let net = D(party.openingNet);
+  const before = all.filter((t) => toIso(t.transactionDate) < from);
+  for (const t of before) net = net.plus(D(t.debitAmount)).minus(D(t.creditAmount));
+  const opening = net;
+  const inRange = all.filter((t) => { const d = toIso(t.transactionDate); return d >= from && d <= to; });
+  let debit = ZERO, credit = ZERO;
+  const rows: Section["rows"] = [];
+  for (const t of inRange) {
+    const dr = D(t.debitAmount), cr = D(t.creditAmount);
+    net = net.plus(dr).minus(cr);
+    debit = debit.plus(dr); credit = credit.plus(cr);
+    rows.push({ date: formatDate(toIso(t.transactionDate), cal), bill: t.billNumber, description: t.description, debit: dr.isZero() ? "" : m(dr), credit: cr.isZero() ? "" : m(cr), balance: m(net.times(sign)) });
+  }
+  const doc = baseDoc(biz, "party-statement", "Party Statement", `${party.name}${party.phone ? ` - ${party.phone}` : ""}`);
+  const allTime = from <= "1900-01-01" && to >= "2999-12-31";
+  doc.meta.push(
+    ["Party", party.name],
+    ["Period", allTime ? "All entries" : rangeLabel(from, to, cal)],
+    ["Opening Balance", m(opening.times(sign))],
+    ["Total Debit", m(debit)],
+    ["Total Credit", m(credit)],
+    ["Closing Balance", m(net.times(sign))],
+    ["Balance rule", conventionText(biz.balanceConvention)],
+  );
+  doc.notes.push(net.gt(0) ? `${party.name} owes you ${m(net)}.` : net.lt(0) ? `You owe ${party.name} ${m(net.abs())}.` : "This party is fully settled.");
+  const cols = [
+    { key: "date", label: "Date" },
+    { key: "bill", label: "Bill No." },
+    { key: "description", label: "Description" },
+    { key: "debit", label: "Debit", align: "right" as const, type: "money" as const },
+    { key: "credit", label: "Credit", align: "right" as const, type: "money" as const },
+    { key: "balance", label: "Balance", align: "right" as const, type: "money" as const },
+  ];
+  const lead: Section["rows"] = opening.isZero() && !inRange.length ? [] : [{ date: "", bill: "", description: "Balance brought forward", debit: "", credit: "", balance: m(opening.times(sign)) }];
+  doc.sections.push({ columns: cols, rows: [...lead, ...rows], totals: { date: "Total", bill: "", description: "", debit: m(debit), credit: m(credit), balance: "" }, emptyMessage: "No entries for this party in this period." });
+  return doc;
+}
+
+export async function buildOutstandingReport(ctx: Pick<Ctx, "businessId">): Promise<ReportDoc> {
+  const biz = await getBusiness(ctx.businessId);
+  const rows = await listParties(ctx);
+  const totals = totalsOf(rows);
+  const doc = baseDoc(biz, "outstanding", "Who owes whom", `As of ${formatDate(todayIso(), biz.displayCalendar)} ${biz.displayCalendar}`);
+  doc.meta.push(["Total to receive", m(totals.receivable)], ["Total to pay", m(totals.payable)], ["Parties owing you", String(totals.owingCount)], ["Parties you owe", String(totals.owedCount)]);
+  const owes = rows.filter((r) => r.net.gt(0)).sort((a, b) => b.net.comparedTo(a.net));
+  const owed = rows.filter((r) => r.net.lt(0)).sort((a, b) => a.net.comparedTo(b.net));
+  doc.sections.push({
+    heading: "They owe you",
+    columns: [
+      { key: "name", label: "Party" }, { key: "phone", label: "Phone" }, { key: "last", label: "Last payment" },
+      { key: "b0", label: "0-30 days", align: "right", type: "money" }, { key: "b1", label: "31-60 days", align: "right", type: "money" },
+      { key: "b2", label: "61-90 days", align: "right", type: "money" }, { key: "b3", label: "Over 90 days", align: "right", type: "money" },
+      { key: "net", label: "Balance", align: "right", type: "money" },
+    ],
+    rows: owes.map((r) => ({ name: r.name, phone: r.phone, last: r.lastPaymentDate ? formatDate(r.lastPaymentDate, biz.displayCalendar) : "", b0: m(r.ageing["0-30"]), b1: m(r.ageing["31-60"]), b2: m(r.ageing["61-90"]), b3: m(r.ageing["90+"]), net: m(r.net) })),
+    totals: { name: "Total", phone: "", last: "", b0: m(owes.reduce((a, r) => a.plus(r.ageing["0-30"]), ZERO)), b1: m(owes.reduce((a, r) => a.plus(r.ageing["31-60"]), ZERO)), b2: m(owes.reduce((a, r) => a.plus(r.ageing["61-90"]), ZERO)), b3: m(owes.reduce((a, r) => a.plus(r.ageing["90+"]), ZERO)), net: m(totals.receivable) },
+    emptyMessage: "Nobody owes you anything right now.",
+  });
+  doc.sections.push({
+    heading: "You owe them",
+    columns: [{ key: "name", label: "Party" }, { key: "phone", label: "Phone" }, { key: "net", label: "Balance", align: "right", type: "money" }],
+    rows: owed.map((r) => ({ name: r.name, phone: r.phone, net: m(r.net.abs()) })),
+    totals: { name: "Total", phone: "", net: m(totals.payable) },
+    emptyMessage: "You do not owe anyone right now.",
+  });
+  doc.notes.push("Each payment received settles that party's oldest bill first.");
   return doc;
 }

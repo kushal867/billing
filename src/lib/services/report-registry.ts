@@ -7,12 +7,12 @@ import { toIso } from "@/lib/dates";
 import type { LedgerFilters } from "./ledger";
 import { ensureCurrentFinancialYear, getBusiness } from "./periods";
 import { resolveLedgerPeriod } from "./ledger-period";
-import { buildBillpadReport, buildAnnualReport, buildDailyReport, buildLedgerReport, buildMonthlyReport, buildProfitLoss, buildTrialBalance } from "./reports";
+import { buildBillpadReport, buildAnnualReport, buildDailyReport, buildLedgerReport, buildMonthlyReport, buildOutstandingReport, buildPartyStatementReport, buildProfitLoss, buildTrialBalance } from "./reports";
 import type { ReportDoc } from "./report-doc";
 import type { Lang } from "@/lib/i18n";
 import { translateDoc } from "@/lib/i18n/doc";
 
-export const REPORT_SLUGS = ["ledger", "daily", "monthly", "annual", "profit-loss", "trial-balance", "billpad"] as const;
+export const REPORT_SLUGS = ["ledger", "daily", "monthly", "annual", "profit-loss", "trial-balance", "billpad", "party-statement", "outstanding"] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 export type ReportParams = Record<string, string | undefined>;
 
@@ -43,6 +43,15 @@ async function buildReportEn(ctx: Ctx, slug: ReportSlug, sp: ReportParams): Prom
         dir: "asc",
       };
       return { doc: await buildLedgerReport(ctx, f), range: r, biz };
+    }
+    case "party-statement": {
+      if (!sp.party) throw notFound("Party");
+      const r = withDefault("all");
+      return { doc: await buildPartyStatementReport(ctx, sp.party, r.from, r.to), range: r, biz };
+    }
+    case "outstanding": {
+      const r = withDefault("all");
+      return { doc: await buildOutstandingReport(ctx), range: r, biz };
     }
     case "billpad": {
       const r = withDefault("month");

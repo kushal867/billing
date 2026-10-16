@@ -50,7 +50,7 @@ export function OnboardingWizard({ initial }: Props) {
     setError(""); setStep(3);
   });
   const saveFirst = () => start(async () => {
-    const errs = validateEntryForm({ dateText: entry.date, calendar: cal, billNumber: entry.bill, debit: entry.debit, credit: entry.credit, description: entry.description, categoryId: "" }, "POSTED");
+    const errs = validateEntryForm({ dateText: entry.date, calendar: cal, billNumber: entry.bill, debit: entry.debit, credit: entry.credit, description: entry.description, categoryId: "", partyName: "" }, "POSTED");
     const first = Object.values(errs)[0];
     if (first) return fail(first);
     const r = await saveEntry({ dateText: entry.date, calendar: cal, billNumber: entry.bill, debit: entry.debit, credit: entry.credit, description: entry.description, status: "POSTED", clientToken: token });

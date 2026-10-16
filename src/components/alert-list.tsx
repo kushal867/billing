@@ -13,7 +13,7 @@ export const readDismissed = (): string[] => { try { return JSON.parse(localStor
 
 const TITLES: Record<AlertItem["kind"], string> = {
   "missing-bills": "Missing bill numbers", large: "Unusually large amounts", "duplicate-bills": "Duplicate bill numbers", drafts: "Drafts waiting",
-  future: "Future-dated entries", stale: "No recent entries", uncategorised: "Entries without a category",
+  future: "Future-dated entries", stale: "No recent entries", uncategorised: "Entries without a category", "overdue-parties": "Unpaid for over 60 days",
 };
 const DETAILS: Record<AlertItem["kind"], string> = {
   "missing-bills": "{n} bill numbers look skipped: {ranges}. If a bill was skipped on purpose or the series restarted, you can dismiss this.",
@@ -23,6 +23,7 @@ const DETAILS: Record<AlertItem["kind"], string> = {
   future: "{n} entries are dated in the future.",
   stale: "Nothing was added for {n} days (last entry on {date}).",
   uncategorised: "{n} entries have no category, so Profit & Loss leaves them out.",
+  "overdue-parties": "{n} parties have a bill that has been unpaid for more than 60 days.",
 };
 
 const DETAILS_ONE: Partial<Record<AlertItem["kind"], string>> = {
@@ -32,6 +33,7 @@ const DETAILS_ONE: Partial<Record<AlertItem["kind"], string>> = {
   drafts: "1 draft is saved but not counted in balances yet.",
   future: "1 entry is dated in the future.",
   uncategorised: "1 entry has no category, so Profit & Loss leaves it out.",
+  "overdue-parties": "1 party has a bill that has been unpaid for more than 60 days.",
 };
 
 /** Reminders with a per-device "dismiss". A dismissed reminder returns only if its content changes. */

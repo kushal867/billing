@@ -3,8 +3,9 @@ import type { Ctx } from "@/lib/auth/context";
 import { addDays, toIso, todayIso } from "@/lib/dates";
 import { D } from "@/lib/money";
 import { listLedger } from "./ledger";
+import { listParties } from "./parties";
 
-export type AlertKind = "missing-bills" | "large" | "duplicate-bills" | "drafts" | "future" | "stale" | "uncategorised";
+export type AlertKind = "missing-bills" | "large" | "duplicate-bills" | "drafts" | "future" | "stale" | "uncategorised" | "overdue-parties";
 export type AlertItem = {
   /** Stable id so a dismissed reminder stays dismissed (per device) until its content changes. */
   id: string;
@@ -91,6 +92,16 @@ export async function getAlerts(ctx: Pick<Ctx, "businessId">, today: string = to
     if (days >= 3) out.push({ id: `stale:${last}`, kind: "stale", severity: "info", count: days, params: { n: days, date: last }, items: [], href: "/entries/new" });
   }
   if (uncategorised && categories) out.push({ id: `uncat:${uncategorised}`, kind: "uncategorised", severity: "info", count: uncategorised, params: { n: uncategorised }, items: [], href: "/ledger" });
+
+  // 8. Customers who have left a bill unpaid for over 60 days
+  const overdue = (await listParties(ctx, { filter: "owes" })).filter((p) => (p.oldestDays ?? 0) > 60 || p.ageing["90+"].gt(0));
+  if (overdue.length) {
+    overdue.sort((a, c) => c.net.comparedTo(a.net));
+    out.push({
+      id: `overdue:${overdue.map((p) => p.id.slice(0, 8)).join(",").slice(0, 200)}`, kind: "overdue-parties", severity: "warn", count: overdue.length, params: { n: overdue.length },
+      items: overdue.slice(0, 8).map((p) => `${p.name} - ${p.net.toFixed(2)}`), href: "/parties?filter=owes",
+    });
+  }
 
   // warnings first
   return out.sort((x, y) => (x.severity === y.severity ? 0 : x.severity === "warn" ? -1 : 1));

@@ -16,6 +16,7 @@ This guide is for the people who use KusBill every day: the shop owner, the acco
 4. [Adding a bill (Billpad Entry)](#4-adding-a-bill-billpad-entry)
 5. [The ledger: viewing and correcting entries](#5-the-ledger-viewing-and-correcting-entries)
 6. [Bulk entry: a whole page at once](#6-bulk-entry-a-whole-page-at-once)
+   - [6a. Customers and suppliers (Parties)](#6a-customers-and-suppliers-parties)
 7. [Importing old billpad records](#7-importing-old-billpad-records)
 8. [Reports, printing and downloads](#8-reports-printing-and-downloads)
 9. [Alerts and reminders](#9-alerts-and-reminders)
@@ -212,6 +213,31 @@ Use **Ledger → Bulk Entry** (or the *Bulk Entry* button on the entry page) to 
 6. Press **Save all.** **Nothing is saved unless every row is valid**, so you never end up with half a page entered. If some rows are duplicates of existing entries, tick **Duplicates will be saved too** only if you really want them.
 
 Your unsaved page is remembered on this device, so a refresh does not lose your typing.
+
+---
+
+## 6a. Customers and suppliers (Parties)
+
+A paper billpad usually keeps one page per customer. **Parties** gives you the same thing: every customer or supplier gets their own ledger, and you can see at a glance **who owes you** and **whom you owe**.
+
+**Adding a bill for a customer.** On *Add Entry*, type the name in the **Party** box. Names you used before appear as you type; a new name is added automatically. Capital letters and extra spaces do not matter ("ram traders" and "Ram  Traders" are the same party). The party is optional - entries without one work exactly as before.
+
+**The Parties page** (left menu) shows:
+- *You will receive* and *You need to pay* totals, and how many parties are behind each;
+- a list sorted by the largest balance, with phone, last payment, and **how many days the oldest bill has been unpaid** (amber after 30 days, red after 60);
+- filters: *They owe me*, *I owe them*, *Settled*, and a search box (name or phone).
+
+**One party's page** shows their balance, how long amounts have been unpaid (0-30, 31-60, 61-90, over 90 days), and a ledger-style **statement** with a running balance. Use **PDF, Excel, CSV or Print** to give them a copy, and pick a date range if you only need part of it.
+
+**Recording a payment.** On the party's page, choose *Payment received from them* (or *made to them*), the amount, date and an optional receipt or bill number, then *Record payment*. It becomes a normal entry in your ledger, so every report stays correct. Each payment settles that party's **oldest bill first**, which is how the "unpaid for N days" figures are worked out.
+
+**Balance brought forward.** If a customer already owed you money before you started with KusBill, enter it in *Balance brought forward* on the party's details and say who owes it.
+
+**Tidying up.** If the same person was typed two ways, open one of them and use *Merge* to move all entries into the other. A party that is fully settled can be hidden (its entries are kept).
+
+**Reminders.** The dashboard shows *Who owes you the most*, and the bell warns when a customer has had a bill unpaid for more than 60 days.
+
+> Entries imported from a file or typed in Bulk Entry do not have a party yet. Open the entry and add the party name, or use the same name in new bills.
 
 ---
 

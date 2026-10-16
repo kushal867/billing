@@ -9,6 +9,7 @@ import { parseEntry, type ParsedEntry } from "@/lib/validators";
 import { audit } from "./audit";
 import { getAnchor } from "./periods";
 import { syncJournalForTransaction } from "./accounting";
+import { resolveParty } from "./parties";
 
 type Tx = Prisma.TransactionClient;
 
@@ -99,6 +100,7 @@ export async function createTransaction(ctx: Ctx, raw: unknown): Promise<SaveRes
       const dups = await findDuplicates(tx, ctx.businessId, { dateIso: e.dateIso, billNumber: e.billNumber, debit: e.debit, credit: e.credit });
       if (dups.exact.length || dups.sameBill.length) return { status: "duplicate" as const, duplicates: dups };
     }
+    const partyId = await resolveParty(tx, ctx, e.partyName);
     const created = await tx.transaction.create({
       data: {
         businessId: ctx.businessId,
@@ -110,6 +112,7 @@ export async function createTransaction(ctx: Ctx, raw: unknown): Promise<SaveRes
         creditAmount: e.credit,
         description: e.description,
         categoryId: e.categoryId ?? null,
+        partyId,
         status: e.status,
         clientToken: e.clientToken ?? null,
         createdBy: ctx.userId,
@@ -124,7 +127,7 @@ export async function createTransaction(ctx: Ctx, raw: unknown): Promise<SaveRes
 export async function getTransaction(ctx: Pick<Ctx, "businessId">, id: string) {
   const t = await db.transaction.findFirst({
     where: { id, businessId: ctx.businessId },
-    include: { category: true },
+    include: { category: true, party: true },
   });
   if (!t) throw notFound("Entry");
   return t;
@@ -148,6 +151,7 @@ export async function updateTransaction(ctx: Ctx, id: string, raw: unknown, expe
       const dups = await findDuplicates(tx, ctx.businessId, { dateIso: e.dateIso, billNumber: e.billNumber, debit: e.debit, credit: e.credit }, id);
       if (dups.exact.length || dups.sameBill.length) return { status: "duplicate" as const, duplicates: dups };
     }
+    const partyId = e.partyName === undefined ? before.partyId : await resolveParty(tx, ctx, e.partyName);
     const after = await tx.transaction.update({
       where: { id },
       data: {
@@ -159,6 +163,7 @@ export async function updateTransaction(ctx: Ctx, id: string, raw: unknown, expe
         creditAmount: e.credit,
         description: e.description,
         categoryId: e.categoryId ?? null,
+        partyId,
         status: e.status,
         version: { increment: 1 },
         updatedBy: ctx.userId,
@@ -214,6 +219,7 @@ export async function reverseTransaction(ctx: Ctx, id: string, reason: string, d
         creditAmount: orig.debitAmount,
         description: `Reversal of bill ${orig.billNumber}: ${r}`.slice(0, 500),
         categoryId: orig.categoryId,
+        partyId: orig.partyId,
         status: "POSTED",
         reversalOfId: orig.id,
         createdBy: ctx.userId,

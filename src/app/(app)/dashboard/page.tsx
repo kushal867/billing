@@ -4,6 +4,7 @@ import { BookOpen, FileBarChart, PlusCircle } from "lucide-react";
 import { requireCtx } from "@/lib/auth/server";
 import { canWrite } from "@/lib/auth/context";
 import { getBusiness } from "@/lib/services/periods";
+import { listParties } from "@/lib/services/parties";
 import { getDashboard } from "@/lib/services/dashboard";
 import { resolveRange } from "@/lib/ranges";
 import { formatDate } from "@/lib/dates";
@@ -32,7 +33,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const cal = biz.displayCalendar;
   const g = biz.numberGrouping;
   const range = resolveRange(sp, { ...biz, displayCalendar: cal });
-  const [d, setup, alerts] = await Promise.all([getDashboard(ctx, range.from, range.to), getSetupStatus(ctx.businessId), getAlerts(ctx)]);
+  const [d, setup, alerts, parties] = await Promise.all([getDashboard(ctx, range.from, range.to), getSetupStatus(ctx.businessId), getAlerts(ctx), listParties(ctx, { filter: "owes" })]);
+  const topOwing = [...parties].sort((a, b) => b.net.comparedTo(a.net)).slice(0, 5);
   const write = canWrite(ctx.role);
   const empty = d.count === 0 && d.recent.length === 0;
 
@@ -87,6 +89,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Card>
         ) : (
           <DashboardCharts data={d.months} grouping={g} hasClassified={d.months.some((m) => m.income || m.expense)} />
+        )}
+
+        {topOwing.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle>{t("Who owes you the most")}</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="divide-y text-sm">
+                {topOwing.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0"><Link href={`/parties/${p.id}`} className="font-medium text-primary hover:underline">{p.name}</Link>{p.oldestDays !== null && p.oldestDays > 30 && <span className="ml-2 text-xs text-muted-foreground">{t("{n} days", { n: p.oldestDays })}</span>}</div>
+                    <Amt v={p.net.toFixed(2)} grouping={g} tone="income" />
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm"><Link className="text-primary underline" href="/parties?filter=owes">{t("See everyone who owes you")}</Link></p>
+            </CardContent>
+          </Card>
         )}
 
         <Card>

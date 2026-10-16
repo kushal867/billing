@@ -95,6 +95,7 @@ export type LedgerFilters = {
   q?: string;
   type?: "all" | "debit" | "credit";
   categoryId?: string;
+  partyId?: string;
   status?: "POSTED" | "DRAFT" | "VOID";
   sort?: LedgerSortField;
   dir?: "asc" | "desc";
@@ -115,6 +116,8 @@ export type LedgerRow = {
   description: string;
   categoryId: string | null;
   categoryName: string | null;
+  partyId: string | null;
+  partyName: string | null;
   status: "DRAFT" | "POSTED" | "VOID";
   version: number;
   createdByName: string | null;
@@ -136,7 +139,7 @@ export type LedgerPage = {
 type Raw = {
   id: string; seq: bigint; transactionDate: Date; enteredDateText: string; enteredCalendar: "BS" | "AD";
   billNumber: string; debitAmount: Prisma.Decimal; creditAmount: Prisma.Decimal; description: string;
-  categoryId: string | null; categoryName: string | null; status: "DRAFT" | "POSTED" | "VOID"; version: number;
+  categoryId: string | null; categoryName: string | null; partyId: string | null; partyName: string | null; status: "DRAFT" | "POSTED" | "VOID"; version: number;
   balance: Prisma.Decimal | null; dupCount: bigint; isLarge: boolean; reversalOfId: string | null;
   createdByName: string | null; updatedByName: string | null; createdAt: Date; updatedAt: Date;
   total: bigint; sumDebit: Prisma.Decimal; sumCredit: Prisma.Decimal;
@@ -166,9 +169,10 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
   if (f.type === "debit") where.push(Prisma.sql`b."debitAmount" > 0`);
   if (f.type === "credit") where.push(Prisma.sql`b."creditAmount" > 0`);
   if (f.categoryId) where.push(Prisma.sql`b."categoryId" = ${f.categoryId}::uuid`);
+  if (f.partyId) where.push(Prisma.sql`b."partyId" = ${f.partyId}::uuid`);
   if (f.q?.trim()) {
     const like = `%${f.q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    where.push(Prisma.sql`(b."billNumber" ILIKE ${like} OR b."description" ILIKE ${like})`);
+    where.push(Prisma.sql`(b."billNumber" ILIKE ${like} OR b."description" ILIKE ${like} OR b."partyName" ILIKE ${like})`);
   }
   const limit = pageSize > 0 ? Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}` : Prisma.empty;
 
@@ -179,7 +183,7 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
     ),
     base AS (
       SELECT t.*,
-        c.name AS "categoryName",
+        c.name AS "categoryName", pa.name AS "partyName",
         cu.name AS "createdByName", uu.name AS "updatedByName",
         ${anchor.amount}::numeric + SUM(CASE WHEN t.status = 'POSTED' THEN (t."debitAmount" - t."creditAmount") * ${sign}::int ELSE 0 END)
           OVER (ORDER BY t."transactionDate", t.seq ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS balance_all,
@@ -189,6 +193,7 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
       FROM "Transaction" t
       CROSS JOIN stats s
       LEFT JOIN "Category" c ON c.id = t."categoryId"
+      LEFT JOIN "Party" pa ON pa.id = t."partyId"
       LEFT JOIN "User" cu ON cu.id = t."createdBy"
       LEFT JOIN "User" uu ON uu.id = t."updatedBy"
       WHERE t."businessId" = ${ctx.businessId}::uuid AND t.status IN ('POSTED', ${status}::"TransactionStatus")
@@ -218,6 +223,8 @@ export async function listLedger(ctx: Pick<Ctx, "businessId">, f: LedgerFilters 
     description: r.description,
     categoryId: r.categoryId,
     categoryName: r.categoryName,
+    partyId: r.partyId,
+    partyName: r.partyName,
     status: r.status,
     version: r.version,
     createdByName: r.createdByName,
