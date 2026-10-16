@@ -33,6 +33,9 @@ Next up: daily cash closing, automatic email backups, and a party column in impo
 
 If you run or know a small shop that still lives on paper, I'd love to hear what would make this useful for them.
 
+Try it (create a free account in a minute): https://kushbill.edusathi.tech
+Code: https://github.com/kushal867/billing
+
 #SoftwareEngineering #NextJS #TypeScript #PostgreSQL #Nepal #SmallBusiness #BuildInPublic #WebDevelopment #Fintech
 
 ---
@@ -44,6 +47,8 @@ I replaced my uncle's paper billpad with software.
 KusBill keeps the familiar Date / Bill No. / Debit / Credit / Balance layout, but calculates every balance from the full history so it can never drift. It has customer ledgers with "who owes me", Nepali language and PDFs, offline entry, and imports from Excel or PDF.
 
 Built with Next.js, TypeScript and PostgreSQL, with 148 tests against a real database. Screenshots in the carousel.
+
+Try it: https://kushbill.edusathi.tech
 
 #NextJS #TypeScript #Nepal #BuildInPublic
 
